@@ -108,6 +108,7 @@ Status information:
 If you have entered the correct Wifi credentials and the H801 was able to connect to your wifi, it will blink with the green led 10 times
 If the connection to the MQTT fails it will blink with the red LED 10 times. It will try to reconnect after 5sec.
 
+![alt text](https://raw.githubusercontent.com/starkillerOG/h801-mqtt-json/master/pictures/flashing_h801.jpg)
 
 ## Home assistant example configuration
 
@@ -147,3 +148,11 @@ light:
     optimistic: false
 ```
 
+## Example to control the h801 with mosquitto
+
+```
+mosquitto_sub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip1/#" -v
+mosquitto_pub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip1/combined/json_set" -m "{'state':'ON', 'brightness': 255, 'color': {'r': 255,'g': 255,'b': 255}}"
+mosquitto_pub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip1/combined/json_set" -m "{'state':'ON', 'brightness': 255, 'color_temp': 327}"
+mosquitto_pub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip1/combined/json_set" -m "{'state':'ON', 'effect': 'white_mode'}"
+```
