@@ -33,5 +33,5 @@
 //Light setup
 #define min_color_temp 153
 #define max_color_temp 500
-#define transition_time_s_conf 1.0   // transition time in seconds between color/brightness/white changes
+#define transition_time_s_conf 0.5   // transition time in seconds between color/brightness/white changes
 
