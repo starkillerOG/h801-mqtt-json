@@ -9,6 +9,8 @@
 // PubSubClient.h is inside documents/Arduino/libraries/PubSubclient/src/PubSubClient.h
 // #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 600
 
+#define MQTT_MAX_PACKET_SIZE 600
+
 #include <string>
 
 #include <ESP8266WiFi.h>
@@ -33,20 +35,18 @@ char* chip_id = "00000000";
 char* myhostname = "esp00000000";
 uint8_t reconnect_N = 0;
 unsigned long last_publish_ms = 0;
-
 // transitioning variables
 float transition_time_s_standard = transition_time_s_conf;
 float transition_time_s = transition_time_s_conf;
-unsigned long last_transition_loop_ms = 0;
 unsigned long last_transition_publish = 0;
-uint16_t transition_wait_ms = 1;
-uint16_t transitionLoopCount = 0;
+unsigned long start_transition_loop_ms = 0;
+unsigned long transition_ms = 0;
+uint8_t transition_increment = 1;
+int rest_step[5] = {0};
+float step_time_ms[5] = {1};
+int n_step[5] = {0};
+uint16_t transitionStepCount[5] = {0};
 boolean transitioning = false;
-int16_t transition_stepR = 0;
-int16_t transition_stepG = 0; 
-int16_t transition_stepB = 0;
-int16_t transition_stepW1 = 0;
-int16_t transition_stepW2 = 0;
 uint8_t t_red_begin = 255;
 uint8_t t_green_begin = 255;
 uint8_t t_blue_begin = 255;
@@ -252,12 +252,10 @@ void setWhite(void) {
 /********************************** Publish states *****************************************/
 
 void publishRGBJsonState() {
-  StaticJsonBuffer<JSON_BUFFER_SIZE> jsonBuffer;
-
-  JsonObject& root = jsonBuffer.createObject();
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
   root["state"] = (m_rgb_state) ? LIGHT_ON : LIGHT_OFF;
-  JsonObject& color = root.createNestedObject("color");
+  JsonObject color = root.createNestedObject("color");
   color["r"] = m_rgb_red;
   color["g"] = m_rgb_green;
   color["b"] = m_rgb_blue;
@@ -265,16 +263,14 @@ void publishRGBJsonState() {
   root["brightness"] = m_rgb_brightness;
 
 
-  char buffer[root.measureLength() + 1];
-  root.printTo(buffer, sizeof(buffer));
+  char buffer[measureJson(root) + 1];
+  serializeJson(root, buffer, sizeof(buffer));
 
   client.publish(MQTT_JSON_LIGHT_RGB_STATE_TOPIC, buffer, true);
 }
 
 void publishWhiteJsonState() {
-  StaticJsonBuffer<JSON_BUFFER_SIZE> jsonBuffer;
-
-  JsonObject& root = jsonBuffer.createObject();
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
   root["state"] = (m_white_state) ? LIGHT_ON : LIGHT_OFF;
   
@@ -284,16 +280,14 @@ void publishWhiteJsonState() {
   root["brightness"] = m_white_brightness;
 
 
-  char buffer[root.measureLength() + 1];
-  root.printTo(buffer, sizeof(buffer));
+  char buffer[measureJson(root) + 1];
+  serializeJson(root, buffer, sizeof(buffer));
 
   client.publish(MQTT_JSON_LIGHT_WHITE_STATE_TOPIC, buffer, true);
 }
 
 void publishCombinedJsonState() {
-  StaticJsonBuffer<JSON_BUFFER_SIZE> jsonBuffer;
-
-  JsonObject& root = jsonBuffer.createObject();
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
   root["state"] = (m_white_state || m_rgb_state) ? LIGHT_ON : LIGHT_OFF;
 
@@ -302,7 +296,7 @@ void publishCombinedJsonState() {
 
   root["brightness"] = m_combined_brightness;
 
-  JsonObject& color = root.createNestedObject("color");
+  JsonObject color = root.createNestedObject("color");
   if (m_white_state && !m_rgb_state) {
     color["r"] = 255;
     color["g"] = 255;
@@ -322,21 +316,19 @@ void publishCombinedJsonState() {
   }
   root["effect"] = m_effect.c_str();
 
-  char buffer[root.measureLength() + 1];
-  root.printTo(buffer, sizeof(buffer));
+  char buffer[measureJson(root) + 1];
+  serializeJson(root, buffer, sizeof(buffer));
 
   client.publish(MQTT_JSON_LIGHT_COMBINED_STATE_TOPIC, buffer, true);
 }
 
 void publishJsonSettings() {
-  StaticJsonBuffer<JSON_BUFFER_SIZE> jsonBuffer;
-
-  JsonObject& root = jsonBuffer.createObject();
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
   root["transition_time_s_standard"] = transition_time_s_standard;
 
-  char buffer[root.measureLength() + 1];
-  root.printTo(buffer, sizeof(buffer));
+  char buffer[measureJson(root) + 1];
+  serializeJson(root, buffer, sizeof(buffer));
 
   client.publish(MQTT_JSON_LIGHT_SETTINGS_STATE_TOPIC, buffer, true);
 }
@@ -426,12 +418,12 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
 /********************************** JSON processing *****************************************/
 
 bool processRGBJson(char* message) {
-  StaticJsonBuffer<JSON_BUFFER_SIZE> jsonBuffer;
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
-  JsonObject& root = jsonBuffer.parseObject(message);
+  DeserializationError error = deserializeJson(root, message);
 
-  if (!root.success()) {
-    Serial1.println("parseObject() failed");
+  if (error) {
+    Serial1.println("deserializeJson() failed");
     return false;
   }
 
@@ -498,12 +490,12 @@ bool processRGBJson(char* message) {
 
 
 bool processWhiteJson(char* message) {
-  StaticJsonBuffer<JSON_BUFFER_SIZE> jsonBuffer;
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
-  JsonObject& root = jsonBuffer.parseObject(message);
+  DeserializationError error = deserializeJson(root, message);
 
-  if (!root.success()) {
-    Serial1.println("parseObject() failed");
+  if (error) {
+    Serial1.println("deserializeJson() failed");
     return false;
   }
 
@@ -554,12 +546,12 @@ bool processWhiteJson(char* message) {
 }
 
 bool processCombinedJson(char* message) {
-  StaticJsonBuffer<JSON_BUFFER_SIZE> jsonBuffer;
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
-  JsonObject& root = jsonBuffer.parseObject(message);
+  DeserializationError error = deserializeJson(root, message);
 
-  if (!root.success()) {
-    Serial1.println("parseObject() failed");
+  if (error) {
+    Serial1.println("deserializeJson() failed");
     return false;
   }
 
@@ -674,12 +666,12 @@ bool processCombinedJson(char* message) {
 }
 
 bool processJsonSettings(char* message) {
-  StaticJsonBuffer<JSON_BUFFER_SIZE> jsonBuffer;
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
-  JsonObject& root = jsonBuffer.parseObject(message);
+  DeserializationError error = deserializeJson(root, message);
 
-  if (!root.success()) {
-    Serial1.println("parseObject() failed");
+  if (error) {
+    Serial1.println("deserializeJson() failed");
     return false;
   }
 
@@ -790,74 +782,50 @@ void loop()
 
 /********************************** Fading code *****************************************/
 
-/* Code from: https://www.arduino.cc/en/Tutorial/ColorCrossfader
-* 
-* The program works like this:
-* Imagine a crossfade that moves the red LED from 0-10, 
-*   the green from 0-5, and the blue from 10 to 7, in
-*   ten steps.
-*   We'd want to count the 10 steps and increase or 
-*   decrease color values in evenly stepped increments.
-*   Imagine a + indicates raising a value by 1, and a -
-*   equals lowering it. Our 10 step fade would look like:
-* 
-*   1 2 3 4 5 6 7 8 9 10
-* R + + + + + + + + + +
-* G   +   +   +   +   +
-* B     -     -     -
-* 
-* The red rises from 0 to 10 in ten steps, the green from 
-* 0-5 in 5 steps, and the blue falls from 10 to 7 in three steps.
-* 
-* In the real program, the color percentages are converted to 
-* 0-255 values, and there are 1020 steps (255*4).
-* 
-* To figure out how big a step there should be between one up- or
-* down-tick of one of the LED values, we call calculateStep(), 
-* which calculates the absolute gap between the start and end values, 
-* and then divides that gap by 1020 to determine the size of the step  
-* between adjustments in the value.
-*/
+/* Inspired by: https://www.arduino.cc/en/Tutorial/ColorCrossfader */
 
-int calculateStep(int startValue, int endValue) {
-  int step = endValue - startValue; // What's the overall gap?
-  if (step) {                      // If its non-zero, 
-    step = 1020/step;              //   divide by 1020
-  } 
-  return step;
+void calculateNstep(int LED_index, int start_value, int target_value) {
+  float N_step_float = (float(target_value - start_value))/transition_increment;
+  n_step[LED_index] = (int) N_step_float;
+  rest_step[LED_index] = (N_step_float-n_step[LED_index])*transition_increment;
+  return;
 }
 
-/* The next function is calculateVal. When the loop value, i,
-*  reaches the step size appropriate for one of the
-*  colors, it increases or decreases the value of that color by 1. 
-*  (R, G, and B are each calculated separately.)
-*/
-
-int calculateVal(int step, int val, uint16_t i) {
-
-  if ((step) && i % step == 0) { // If step is non-zero and its time to change a value,
-    if (step > 0) {              //   increment the value if step is positive...
-      val += 1;           
-    } 
-    else if (step < 0) {         //   ...or decrement it if step is negative
-      val -= 1;
-    } 
-  }
-  // Defensive driving: make sure val stays in the range 0-255
-  if (val > 255) {
-    val = 255;
-  } 
-  else if (val < 0) {
-    val = 0;
-  }
-  return val;
+float calculateStepTime(int N_step) {
+  float Step_time_ms;
+  if (abs(N_step)>1) {                                         // Do not divide by 0, 
+    Step_time_ms = float(transition_time_s)*1000/(abs(N_step)-1); // sec --> ms, divide by number of steps minus first one (imediatly done)
+  } else {
+    Step_time_ms = 0;
+  }      
+  return Step_time_ms;
 }
 
-/* crossFade() converts the percentage colors to a 
-*  0-255 range, then loops 1020 times, checking to see if  
-*  the value needs to be updated each time, then writing
-*  the color values to the correct pins.
-*/
+uint8_t ExecuteTransition(int LED_index, uint8_t LED_value, int LED_pin) {
+  // Determine if it is time to do a transition step
+  if (transition_ms>step_time_ms[LED_index]*(transitionStepCount[LED_index])+1){
+    transitionStepCount[LED_index] = transitionStepCount[LED_index]+1;
+    
+    if (n_step[LED_index] > 0 && transitionStepCount[LED_index]<=abs(n_step[LED_index])){
+        LED_value = LED_value+transition_increment;
+    } else if (n_step[LED_index] < 0 && transitionStepCount[LED_index]<=abs(n_step[LED_index])){
+        LED_value = LED_value-transition_increment;
+    }
+
+    // Defensive driving: make sure val stays in the range 0-255
+    if (LED_value > 255) {
+      LED_value = 255;
+    } 
+    else if (LED_value < 0) {
+      LED_value = 0;
+    }
+
+    // Write current values to LED pins
+    analogWrite(LED_pin, LED_value);
+  }
+  
+  return LED_value;
+}
 
 void Transition(void) {
   // Get current value as start, if already transitioning the transition variables will be up to date.
@@ -868,54 +836,71 @@ void Transition(void) {
   // Get the target
   get_target_from_m_state(); 
 
-  // Calculate the interval in steps at which the LED value schould be increased/decreased by 1
-  transition_stepR = calculateStep(transition_red, targetR);
-  transition_stepG = calculateStep(transition_green, targetG); 
-  transition_stepB = calculateStep(transition_blue, targetB);
-  transition_stepW1 = calculateStep(transition_w1, targetW1);
-  transition_stepW2 = calculateStep(transition_w2, targetW2); 
+  // Determine the transition_increment (if the transition is faster than 100ms make bigger steps to keep up)
+  if (transition_time_s > 0.1) {
+      transition_increment = 1;
+  } else {
+      transition_increment = round(0.2/transition_time_s);
+  }
+  if (transition_increment>255){
+      transition_increment = 255;
+  }
+  if (transition_increment<1){
+      transition_increment = 1;
+  }
 
-  // Calculate the delay inside each loop in ms to achieve the total transition time
-  transition_wait_ms = int(round(float(transition_time_s)*1000/1020));
-
+  // Calculte the number of steps and put it in an array [R,G,B,W1,W2]
+  calculateNstep(0, transition_red, targetR);
+  calculateNstep(1, transition_green, targetG);
+  calculateNstep(2, transition_blue, targetB);
+  calculateNstep(3, transition_w1, targetW1);
+  calculateNstep(4, transition_w2, targetW2);
+  
+  for (int i=0; i < 5; i++){
+    // Calculte the time between steps at which the LED value schould be increased/decreased by 1
+    step_time_ms[i] = calculateStepTime(n_step[i]);
+    // Set the intial step counters
+    transitionStepCount[i] = 0;
+  }
+  
+  // Do the first transition step (remainder) if needed, to ensure the end value will be correct if a transition_increment>1 is used.
+  transition_red = transition_red + rest_step[0];
+  transition_green = transition_green + rest_step[1];
+  transition_blue = transition_blue + rest_step[2];
+  transition_w1 = transition_w1 + rest_step[3];
+  transition_w2 = transition_w2 + rest_step[4];
+  analogWrite(RGB_LIGHT_RED_PIN, transition_red);
+  analogWrite(RGB_LIGHT_GREEN_PIN, transition_green);
+  analogWrite(RGB_LIGHT_BLUE_PIN, transition_blue);
+  analogWrite(W1_PIN, transition_w1);
+  analogWrite(W2_PIN, transition_w2);
+  
   // Set variables for beginning transition
-  transitionLoopCount = 0;
-  last_transition_loop_ms = 0;
+  start_transition_loop_ms = millis();
   last_transition_publish = millis();
   transitioning = true;
 }
 
 void Transition_loop(unsigned long now) {
   if (transitioning) {
-    // Execute the actual transition if it is time within the main-loop
-    if (now - last_transition_loop_ms > transition_wait_ms) {
-      last_transition_loop_ms = now;
-  
-      transition_red = calculateVal(transition_stepR, transition_red, transitionLoopCount);
-      transition_green = calculateVal(transition_stepG, transition_green, transitionLoopCount);
-      transition_blue = calculateVal(transition_stepB, transition_blue, transitionLoopCount);
-      transition_w1 = calculateVal(transition_stepW1, transition_w1, transitionLoopCount);
-      transition_w2 = calculateVal(transition_stepW2, transition_w2, transitionLoopCount);
-  
-      // Write current values to LED pins
-      analogWrite(RGB_LIGHT_RED_PIN, transition_red);
-      analogWrite(RGB_LIGHT_GREEN_PIN, transition_green);      
-      analogWrite(RGB_LIGHT_BLUE_PIN, transition_blue);
-      analogWrite(W1_PIN, transition_w1);
-      analogWrite(W2_PIN, transition_w2);
+    transition_ms = now - start_transition_loop_ms;
+    
+    // Execute the actual transition if it is time within the main-loop for each of the LEDS [R,G,B,W1,W2]
+    transition_red = ExecuteTransition(0, transition_red, RGB_LIGHT_RED_PIN);
+    transition_green = ExecuteTransition(1, transition_green, RGB_LIGHT_GREEN_PIN);
+    transition_blue = ExecuteTransition(2, transition_blue, RGB_LIGHT_BLUE_PIN);
+    transition_w1 = ExecuteTransition(3, transition_w1, W1_PIN);
+    transition_w2 = ExecuteTransition(4, transition_w2, W2_PIN);
 
-      transitionLoopCount++; // increase transition loop i
-
-      if (transitionLoopCount > 1020) {
-        // at the end of a color transition
-        transitioning = false;
-        get_m_state_from_transition_state();
-        setWhite();
-        setColor();
-        publishCombinedJsonState();
-        publishRGBJsonState();
-        publishWhiteJsonState();
-      }
+    // at the end of a color transition 
+    if (transitionStepCount[0]>=abs(n_step[0]) && transitionStepCount[1]>=abs(n_step[1]) && transitionStepCount[2]>=abs(n_step[2]) && transitionStepCount[3]>=abs(n_step[3]) && transitionStepCount[4]>=abs(n_step[4])) {
+      transitioning = false;
+      get_m_state_from_transition_state();
+      setWhite();
+      setColor();
+      publishCombinedJsonState();
+      publishRGBJsonState();
+      publishWhiteJsonState();
     }
 
     // publish the state during a transition each 15 seconds
@@ -1000,5 +985,3 @@ void  get_m_state_from_transition_state(void) {
     m_w2 = map(transition_w2, 0, m_white_brightness, 0, 255);
   }
 }
-
-
