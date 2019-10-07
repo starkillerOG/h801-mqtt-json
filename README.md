@@ -49,6 +49,7 @@ Global settings:
 | JSON key            | value type   | possible values   | notes                                                                                       |
 | ------------------- | ------------ | ------------------| ------------------------------------------------------------------------------------------- |
 | "transition_time_s" | float        | 0-66845.7         | default transition time, after power-cycle will reset to the value set in the Config.h file |
+| "RGB_mixing"        | dict with 3x int | {"r": 0-255, "g": 0-255, "b": 0-255} | color balance of the LEDstrip, {255,255,255} is standard operation, lower the r, g or b value to change the balance between the colors of your LED strip. |
 
 Notes:
 1. When the transition time is set to 0, it will disable the transition time code and just immediately change to the target value.
