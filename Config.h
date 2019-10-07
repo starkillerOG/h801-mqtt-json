@@ -33,5 +33,5 @@
 //Light setup
 #define min_color_temp 153
 #define max_color_temp 500
-#define transition_time_s_conf 0.5   // transition time in seconds between color/brightness/white changes
-
+#define transition_time_s_conf 0.5       // transition time in seconds between color/brightness/white changes
+uint8_t RGB_mixing[3] = {255,255,255};   // {255,255,255} is standard operation, lower the R, G or B value to change the balance between the colors of your LED strip
