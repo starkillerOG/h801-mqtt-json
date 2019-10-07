@@ -197,9 +197,9 @@ void setup()
 /********************************** LED strip control *****************************************/
 
 void setRGB(uint8_t p_red, uint8_t p_green, uint8_t p_blue) {
-  analogWrite(RGB_LIGHT_RED_PIN, p_red);
-  analogWrite(RGB_LIGHT_GREEN_PIN, p_green);
-  analogWrite(RGB_LIGHT_BLUE_PIN, p_blue);
+  analogWrite(RGB_LIGHT_RED_PIN, map(p_red, 0, 255, 0, RGB_mixing[0]));
+  analogWrite(RGB_LIGHT_GREEN_PIN, map(p_green, 0, 255, 0, RGB_mixing[1]));
+  analogWrite(RGB_LIGHT_BLUE_PIN, map(p_blue, 0, 255, 0, RGB_mixing[2]));
 }
 
 void setColor(void) {
@@ -248,6 +248,17 @@ void setWhite(void) {
   }
 }
 
+void setLEDpin(int LED_pin, uint8_t LED_value){
+  // map the color value from (0-255) to the value range (0-RGB_mixing)
+  if (LED_pin == RGB_LIGHT_RED_PIN) {
+    LED_value = map(LED_value, 0, 255, 0, RGB_mixing[0]);  
+  } else if (LED_pin == RGB_LIGHT_GREEN_PIN) {
+    LED_value = map(LED_value, 0, 255, 0, RGB_mixing[1]); 
+  } else if (LED_pin == RGB_LIGHT_BLUE_PIN) {
+    LED_value = map(LED_value, 0, 255, 0, RGB_mixing[2]); 
+  }
+  analogWrite(LED_pin, LED_value);
+}
 
 /********************************** Publish states *****************************************/
 
@@ -326,6 +337,10 @@ void publishJsonSettings() {
   StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
   root["transition_time_s_standard"] = transition_time_s_standard;
+  JsonObject rgb_mix = root.createNestedObject("RGB_mixing");
+  rgb_mix["r"] = RGB_mixing[0];
+  rgb_mix["g"] = RGB_mixing[1];
+  rgb_mix["b"] = RGB_mixing[2];
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
@@ -685,6 +700,33 @@ bool processJsonSettings(char* message) {
     }
   }
 
+  // Check RGB_mixing
+  if (root.containsKey("RGB_mixing")) {
+    uint8_t mixing_red = int(root["RGB_mixing"]["r"]);
+    if (mixing_red < 0 || mixing_red > 255) {
+      Serial1.println("Invalid red mixing value");
+      return false;
+    } else {
+      RGB_mixing[0] = mixing_red;
+    }
+
+    uint8_t mixing_green = int(root["RGB_mixing"]["g"]);
+    if (mixing_green < 0 || mixing_green > 255) {
+      Serial1.println("Invalid green mixing value");
+      return false;
+    } else {
+      RGB_mixing[1] = mixing_green;
+    }
+
+    uint8_t mixing_blue = int(root["RGB_mixing"]["b"]);
+    if (mixing_blue < 0 || mixing_blue > 255) {
+      Serial1.println("Invalid blue mixing value");
+      return false;
+    } else {
+      RGB_mixing[2] = mixing_blue;
+    }
+  }
+
   return true;
 }
 
@@ -821,7 +863,7 @@ uint8_t ExecuteTransition(int LED_index, uint8_t LED_value, int LED_pin) {
     }
 
     // Write current values to LED pins
-    analogWrite(LED_pin, LED_value);
+    setLEDpin(LED_pin, LED_value);
   }
   
   return LED_value;
@@ -869,11 +911,9 @@ void Transition(void) {
   transition_blue = transition_blue + rest_step[2];
   transition_w1 = transition_w1 + rest_step[3];
   transition_w2 = transition_w2 + rest_step[4];
-  analogWrite(RGB_LIGHT_RED_PIN, transition_red);
-  analogWrite(RGB_LIGHT_GREEN_PIN, transition_green);
-  analogWrite(RGB_LIGHT_BLUE_PIN, transition_blue);
-  analogWrite(W1_PIN, transition_w1);
-  analogWrite(W2_PIN, transition_w2);
+  setRGB(transition_red, transition_green, transition_blue);
+  setW1(transition_w1);
+  setW2(transition_w2);
   
   // Set variables for beginning transition
   start_transition_loop_ms = millis();
