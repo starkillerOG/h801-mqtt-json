@@ -9,6 +9,8 @@ This firmware is based on:
 1. https://github.com/bruhautomation/ESP-MQTT-JSON-Digital-LEDs/blob/master/ESP_MQTT_Digital_LEDs/ESP_MQTT_Digital_LEDs.ino
 1. https://www.arduino.cc/en/Tutorial/ColorCrossfader
 
+![alt text](https://raw.githubusercontent.com/starkillerOG/h801-mqtt-json/master/pictures/H801-WiFi-LED-Controller.jpg)
+
 ## Ways to control
 This firmware offers 3 possible ways of controlling the LED strips connected to the H801:
 1. Control the RGB strip separately (as a separate light in HomeAssistant)
