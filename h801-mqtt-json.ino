@@ -14,21 +14,25 @@
 #include <string>
 
 #include <ESP8266WiFi.h>
-#include <PubSubClient.h>       // MQTT client
-#include <ArduinoOTA.h>
+#include <PubSubClient.h>             // MQTT client
+#include <ESP8266WebServer.h>         //OTA
+#include <ESP8266mDNS.h>              //OTA
+#include <ESP8266HTTPUpdateServer.h>  //OTA
 #include <ArduinoJson.h>
 #include "Config.h"
 
 #define DEVELOPMENT
-
-WiFiClient wifiClient;
-PubSubClient client(wifiClient);
 
 // Get settings from config.h
 const char* mqtt_server = mqtt_server_conf;
 const char* mqtt_user = mqtt_user_conf;
 const char* mqtt_password = mqtt_password_conf;
 
+// Initial setup
+WiFiClient wifiClient;
+PubSubClient client(wifiClient);
+ESP8266WebServer httpServer(OTA_port);
+ESP8266HTTPUpdateServer httpUpdater;
 
 /********************************** program variables  *****************************************/
 char* chip_id = "00000000";
@@ -166,28 +170,11 @@ void setup()
   // OTA
   // do not start OTA server if no password has been set
   if (OTA_password != "") {
-    //Set up OTA
-    ArduinoOTA.setPort(OTA_port);
-    ArduinoOTA.setHostname(OTA_hostname);
-    ArduinoOTA.setPassword(OTA_password);
-    ArduinoOTA.onStart([]() {
-      Serial1.println("Start OTA");
-    });
-    ArduinoOTA.onEnd([]() {
-      Serial1.println("End OTA");
-    });
-    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-      Serial1.printf("OTA Progress: %u%%\r", (progress / (total / 100)));
-    });
-    ArduinoOTA.onError([](ota_error_t error) {
-      Serial1.printf("OTA Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-      else if (error == OTA_END_ERROR) Serial.println("End Failed");
-    });
-    ArduinoOTA.begin();
+    MDNS.begin(OTA_hostname);
+    httpUpdater.setup(&httpServer, OTA_update_path, OTA_username, OTA_password);
+    httpServer.begin();
+    MDNS.addService("http", "tcp", OTA_port);
+    Serial.printf("HTTPUpdateServer ready! Open http://%s.local%s in your browser and login", OTA_hostname, OTA_update_path);
   }
 
   digitalWrite(RED_PIN, 1);
@@ -805,7 +792,8 @@ void loop()
   client.loop();
   
   // process OTA updates
-  ArduinoOTA.handle();
+  httpServer.handleClient();
+  MDNS.update();
 
   // Post the full status to MQTT every 60000 miliseconds. This is roughly once a minute
   // Usually, clients will store the value internally.
