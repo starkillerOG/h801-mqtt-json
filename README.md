@@ -57,31 +57,30 @@ Notes:
 
 ## MQTT topics
 
-| MQTT topic                           | Function                                                                                          |
-| ------------------------------------ | --------------------------------------------------------------------------------------------- |
-| LedStrip/LED1/rgb/json_status        | JSON status messages are published to this topic about the RGB strip                              |
-| LedStrip/LED1/rgb/json_set           | Set RGB strip using JSON messages                                                                 |
-| LedStrip/LED1/white/json_status      | JSON status messages are published to this topic about the dual white strip                       |
-| LedStrip/LED1/white/json_set         | Set dual white strip using JSON messages                                                          |
-| LedStrip/LED1/combined/json_status   | JSON status messages are published to this topic about both the RGB and dual white strip          |
-| LedStrip/LED1/combined/json_set      | Set both the RGB and dual white strip using JSON messages                                         |
-| LedStrip/LED1/settings/json_status   | Get additional global settings in JSON format on this topic                                       |
-| LedStrip/LED1/settings/json_set      | Set additional global settings using JSON messages                                                |
-| LedStrip/LED1/active                 | Topic to receive the ESP_ID at the start of the module                                            |
+| MQTT topic                                | Function                                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------------- |
+| LedStrip/LED1/rgb/json_status             | JSON status messages are published to this topic about the RGB strip                              |
+| LedStrip/LED1/rgb/json_set                | Set RGB strip using JSON messages                                                                 |
+| LedStrip/LED1/white/json_status           | JSON status messages are published to this topic about the dual white strip                       |
+| LedStrip/LED1/white/json_set              | Set dual white strip using JSON messages                                                          |
+| LedStrip/LED1/combined/json_status        | JSON status messages are published to this topic about both the RGB and dual white strip          |
+| LedStrip/LED1/combined/json_set           | Set both the RGB and dual white strip using JSON messages                                         |
+| LedStrip/LED1/settings/json_status        | Get additional global settings in JSON format on this topic                                       |
+| LedStrip/LED1/settings/json_set           | Set additional global settings using JSON messages                                                |
+| LedStrip/LED1/active                      | Topic to receive the ESP_ID at the start of the module                                            |
 
 
 ## Flashing the H801
 
 1. Open the Config.h file and configure your WIFI credentials, MQTT Broker credentials and OTA credentials.
-    1. As of today I am not sure if OTA works, however it is highly recommended to change the username and password to something else for security.
+    1. It is highly recommended to change the username and password to something else for security.
 1. Open the case and solder 6 Jumers on the board. Four are needed for the serial connection (GND, 3.3V, RX und TX) and two are needed for the Jumper (J1 and J2) to enter the flash mode.
-1. Download Arduino IDE (in my case 1.8.5) and prepare the IDE by opening the preferences window.
+1. Download Arduino IDE (in my case 1.8.10) and prepare the IDE by opening the preferences window.
 1. Enter ```http://arduino.esp8266.com/stable/package_esp8266com_index.json``` into additional board manager URLs field.
 1. Open boards manager from tools > board menu and install esp8266 platform 
 1. Install following new library using the library manager. ("Sketch" menu and then include library > Manage Libraries).
    1. PubSubClient
    1. ArduinoJson
-   1. ArduinoOTA
    1. ESP8266WiFi
 1. IMORTANT: the PubSubClient only allows for a max of 128 bytes by default in a mqtt message. Therefore the MQTT_MAX_PACKET_SIZE needs to be changed for the PubSubClient.h
 1. open the PubSubClient.h file (default location: documents/Arduino/libraries/PubSubclient/src/PubSubClient.h)
@@ -110,6 +109,23 @@ If you have entered the correct Wifi credentials and the H801 was able to connec
 If the connection to the MQTT fails it will blink with the red LED 10 times. It will try to reconnect after 5sec.
 
 ![alt text](https://raw.githubusercontent.com/starkillerOG/h801-mqtt-json/master/pictures/flashing_h801.jpg)
+
+## Subsequent OTA updates of the H801
+After you have completed the initial flash of the H801 as described above, you will be able to flash the H801 Over The Air (OTA) using the wifi-connection. 
+1. If the H801 is connected to your wifi you schould be able to open a webbrowser on a PC and go to: "http://opa_update_h801_[Module_Name]/firmware" where [Module_Name] is specified in the Config.h file (default: LED1).
+1. It will ask for credentials if you browse to that web-page, these are the credentials specified in the Config.h file (OTA_username, OTA_password). After filling in the credentials you should see two buttons: "Choose File" and "Update".
+1. Open the latest h801-mqtt-json.ino file that you dowload from this github project with Arduino IDE.
+1. Select following in the menu tools:
+   1. Board: Generic ESP8266 Module
+   1. Flash Mode: DIO
+   1. Flash Frequency: 40MHz
+   1. CPU Frequency: 80 MHz
+   1. Flash Size: 1M (64K SPIFFS)
+   1. Upload Speed: 115200
+1. In the top bar select "Sketch" --> "Export Compiled Binary", after it completes there schould be a .bin file in the folder where you saved the h801-mqtt-json.ino file.
+1. Upload this .bin file to your H801 using first the "Choose File" and then the "Update" button of step 2.
+1. Done, the H801 should now update and restart with the new firmware version.
+
 
 ## Home assistant example configuration
 
