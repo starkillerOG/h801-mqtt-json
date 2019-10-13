@@ -57,17 +57,17 @@ Notes:
 
 ## MQTT topics
 
-| MQTT topic                       | Function                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------- |
-| LedStrip1/rgb/json_status        | JSON status messages are published to this topic about the RGB strip                              |
-| LedStrip1/rgb/json_set           | Set RGB strip using JSON messages                                                                 |
-| LedStrip1/white/json_status      | JSON status messages are published to this topic about the dual white strip                       |
-| LedStrip1/white/json_set         | Set dual white strip using JSON messages                                                          |
-| LedStrip1/combined/json_status   | JSON status messages are published to this topic about both the RGB and dual white strip          |
-| LedStrip1/combined/json_set      | Set both the RGB and dual white strip using JSON messages                                         |
-| LedStrip1/settings/json_status   | Get additional global settings in JSON format on this topic                                       |
-| LedStrip1/settings/json_set      | Set additional global settings using JSON messages                                                |
-| LedStrip1/active                 | Topic to receive the ESP_ID at the start of the module                                            |
+| MQTT topic                           | Function                                                                                          |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| LedStrip/LED1/rgb/json_status        | JSON status messages are published to this topic about the RGB strip                              |
+| LedStrip/LED1/rgb/json_set           | Set RGB strip using JSON messages                                                                 |
+| LedStrip/LED1/white/json_status      | JSON status messages are published to this topic about the dual white strip                       |
+| LedStrip/LED1/white/json_set         | Set dual white strip using JSON messages                                                          |
+| LedStrip/LED1/combined/json_status   | JSON status messages are published to this topic about both the RGB and dual white strip          |
+| LedStrip/LED1/combined/json_set      | Set both the RGB and dual white strip using JSON messages                                         |
+| LedStrip/LED1/settings/json_status   | Get additional global settings in JSON format on this topic                                       |
+| LedStrip/LED1/settings/json_set      | Set additional global settings using JSON messages                                                |
+| LedStrip/LED1/active                 | Topic to receive the ESP_ID at the start of the module                                            |
 
 
 ## Flashing the H801
@@ -118,8 +118,8 @@ light:
   - platform: mqtt
     schema: json
     name: "RGB"
-    state_topic: "LedStrip1/rgb/json_status"
-    command_topic: "LedStrip1/rgb/json_set"
+    state_topic: "LedStrip/LED1/rgb/json_status"
+    command_topic: "LedStrip/LED1/rgb/json_set"
     brightness: true
     rgb: true
     qos: 0
@@ -128,8 +128,8 @@ light:
   - platform: mqtt
     schema: json
     name: "White"
-    state_topic: "LedStrip1/white/json_status"
-    command_topic: "LedStrip1/white/json_set"
+    state_topic: "LedStrip/LED1/white/json_status"
+    command_topic: "LedStrip/LED1/white/json_set"
     brightness: true
     color_temp: true
     qos: 0
@@ -138,8 +138,8 @@ light:
   - platform: mqtt
     schema: json
     name: "Combined"
-    state_topic: "LedStrip1/combined/json_status"
-    command_topic: "LedStrip1/combined/json_set"
+    state_topic: "LedStrip/LED1/combined/json_status"
+    command_topic: "LedStrip/LED1/combined/json_set"
     brightness: true
     color_temp: true
     rgb: true
@@ -152,8 +152,8 @@ light:
 ## Example to control the h801 with mosquitto
 
 ```
-mosquitto_sub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip1/#" -v
-mosquitto_pub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip1/combined/json_set" -m "{'state':'ON', 'brightness': 255, 'color': {'r': 255,'g': 255,'b': 255}}"
-mosquitto_pub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip1/combined/json_set" -m "{'state':'ON', 'brightness': 255, 'color_temp': 327}"
-mosquitto_pub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip1/combined/json_set" -m "{'state':'ON', 'effect': 'white_mode'}"
+mosquitto_sub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip/#" -v
+mosquitto_pub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip/LED1/combined/json_set" -m "{'state':'ON', 'brightness': 255, 'color': {'r': 255,'g': 255,'b': 255}}"
+mosquitto_pub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip/LED1/combined/json_set" -m "{'state':'ON', 'brightness': 255, 'color_temp': 327}"
+mosquitto_pub -h 192.168.1.??? -p 1883 -u MQTT_USERNAME -P MQTT_PASSWORD -t "LedStrip/LED1/combined/json_set" -m "{'state':'ON', 'effect': 'white_mode'}"
 ```
