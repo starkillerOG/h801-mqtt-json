@@ -18,7 +18,7 @@
 #include <WiFiUDP.h>                  // UDP
 #include <ESP8266WebServer.h>         // OTA
 #include <ESP8266mDNS.h>              // OTA
-#include <ESP8266HTTPUpdateServer.h>  / /OTA
+#include <ESP8266HTTPUpdateServer.h>  // OTA
 #include <ArduinoJson.h>
 #include "Config.h"
 
@@ -506,7 +506,6 @@ bool processRGBJson(char* message) {
         UDP_stream = false;
       }
   } else {
-    m_effect = "color_mode";
     UDP_stream = false;
   }
 
@@ -1067,11 +1066,6 @@ void  UDP_start_stop(void) {
   if (UDP_stream == true && UDP_stream_begin == false) {
     Udp.beginMulticast(WiFi.localIP(), UDP_IP, UDP_Port);
     transition_time_s = UDP_transition_time_s;
-    t_rgb_state_begin = m_rgb_state;
-    t_rgb_brightness_begin = m_rgb_brightness;
-    t_red_begin = m_rgb_red;
-    t_green_begin = m_rgb_green;
-    t_blue_begin = m_rgb_blue;
   } else if (UDP_stream == false && UDP_stream_begin == true) {
     Udp.stop();
   }
