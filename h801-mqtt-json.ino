@@ -15,9 +15,10 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>             // MQTT client
-#include <ESP8266WebServer.h>         //OTA
-#include <ESP8266mDNS.h>              //OTA
-#include <ESP8266HTTPUpdateServer.h>  //OTA
+#include <WiFiUDP.h>                  // UDP
+#include <ESP8266WebServer.h>         // OTA
+#include <ESP8266mDNS.h>              // OTA
+#include <ESP8266HTTPUpdateServer.h>  / /OTA
 #include <ArduinoJson.h>
 #include "Config.h"
 
@@ -31,6 +32,7 @@ const char* mqtt_password = mqtt_password_conf;
 // Initial setup
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
+WiFiUDP Udp;
 ESP8266WebServer httpServer(OTA_port);
 ESP8266HTTPUpdateServer httpUpdater;
 
@@ -65,6 +67,10 @@ uint8_t targetG = 255;
 uint8_t targetB = 255;
 uint8_t targetW1 = 255;
 uint8_t targetW2 = 255;
+// UDP/HDMI variables
+boolean UDP_stream = false;
+boolean UDP_stream_begin = false;
+uint16_t UDP_packetSize = 0;
 
 // buffer used to send/receive data with MQTT
 #define JSON_BUFFER_SIZE 600
@@ -260,6 +266,12 @@ void publishRGBJsonState() {
   
   root["brightness"] = m_rgb_brightness;
 
+  if (UDP_stream) {
+    m_effect = "HDMI";
+  } else {
+    m_effect = "color_mode";
+  }
+  root["effect"] = m_effect.c_str();
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
@@ -305,7 +317,9 @@ void publishCombinedJsonState() {
     color["b"] = m_rgb_blue;
   }
 
-  if (m_white_state && !m_rgb_state) {
+  if (UDP_stream) {
+    m_effect = "HDMI";
+  } else if (m_white_state && !m_rgb_state) {
     m_effect = "white_mode";
   } else if (!m_white_state && m_rgb_state) {
     m_effect = "color_mode";
@@ -358,6 +372,8 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
   t_white_brightness_begin = m_white_brightness;
   t_w1_begin = m_w1;
   t_w2_begin = m_w2;
+  // Save UDP begin state
+  UDP_stream_begin = UDP_stream;
 
   // Handle RGB commands
   if (String(MQTT_JSON_LIGHT_RGB_COMMAND_TOPIC).equals(p_topic)) {
@@ -409,6 +425,9 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
 
   // Reset the transition time for the next transition
   transition_time_s = transition_time_s_standard;
+
+  // Apply UDP stream changes
+  UDP_start_stop();
 
   // Flash green LED
   digitalWrite(GREEN_PIN, 0);
@@ -475,6 +494,20 @@ bool processRGBJson(char* message) {
     } else {
       m_rgb_blue = rgb_blue;
     }
+  }
+
+  // Change LED strip mode
+  if (root.containsKey("effect")) {
+      const char* effect = root["effect"];
+      m_effect = effect;
+      if (m_effect == "UDP" || m_effect == "HDMI") {
+        UDP_stream = true;
+      } else {
+        UDP_stream = false;
+      }
+  } else {
+    m_effect = "color_mode";
+    UDP_stream = false;
   }
 
   // Check transition time
@@ -647,11 +680,19 @@ bool processCombinedJson(char* message) {
         m_white_state = true;
         m_rgb_state = false;
         m_white_mode = true;
+        UDP_stream = false;
       } else if (m_effect == "color_mode") {
         m_white_state = false;
         m_rgb_state = true;
         m_white_mode = false;
+        UDP_stream = false;
+      } else if (m_effect == "UDP" || m_effect == "HDMI") {
+        UDP_stream = true;
+      } else {
+        UDP_stream = false;
       }
+  } else {
+    UDP_stream = false;
   }
 
   // Check transition time
@@ -805,6 +846,8 @@ void loop()
     publishRGBJsonState();
     publishWhiteJsonState();
   }
+  // Process UDP messages if needed
+  UDP_loop(now);
   // Process transitions if needed
   Transition_loop(now);
 }
@@ -859,7 +902,7 @@ uint8_t ExecuteTransition(int LED_index, uint8_t LED_value, int LED_pin) {
 
 void Transition(void) {
   // Get current value as start, if already transitioning the transition variables will be up to date.
-  if (!transitioning) {
+  if (!transitioning && !UDP_stream) {
     get_transition_state_from_begin();
   }
 
@@ -926,18 +969,22 @@ void Transition_loop(unsigned long now) {
       get_m_state_from_transition_state();
       setWhite();
       setColor();
-      publishCombinedJsonState();
-      publishRGBJsonState();
-      publishWhiteJsonState();
+      if(!UDP_stream) {
+        publishCombinedJsonState();
+        publishRGBJsonState();
+        publishWhiteJsonState();
+      }
     }
 
     // publish the state during a transition each 15 seconds
     if (now - last_transition_publish > 15000) {
       last_transition_publish = now;
-      get_m_state_from_transition_state();
-      publishCombinedJsonState();
-      publishRGBJsonState();
-      publishWhiteJsonState();
+      if(!UDP_stream) {
+        get_m_state_from_transition_state();
+        publishCombinedJsonState();
+        publishRGBJsonState();
+        publishWhiteJsonState();
+      }
     }
   }
 }
@@ -1011,5 +1058,54 @@ void  get_m_state_from_transition_state(void) {
     m_white_brightness = _max(transition_w1, transition_w2);
     m_w1 = map(transition_w1, 0, m_white_brightness, 0, 255);
     m_w2 = map(transition_w2, 0, m_white_brightness, 0, 255);
+  }
+}
+
+/********************************** UDP/HDMI code *****************************************/
+void  UDP_start_stop(void) {
+  // check if the UDP multicast needs to be started or stopped
+  if (UDP_stream == true && UDP_stream_begin == false) {
+    Udp.beginMulticast(WiFi.localIP(), UDP_IP, UDP_Port);
+    transition_time_s = UDP_transition_time_s;
+    t_rgb_state_begin = m_rgb_state;
+    t_rgb_brightness_begin = m_rgb_brightness;
+    t_red_begin = m_rgb_red;
+    t_green_begin = m_rgb_green;
+    t_blue_begin = m_rgb_blue;
+  } else if (UDP_stream == false && UDP_stream_begin == true) {
+    Udp.stop();
+  }
+}
+
+void  UDP_loop(unsigned long now) {
+  if (UDP_stream == true) {
+    // check if there is an UDP message available
+    if(Udp.parsePacket()) {
+      // Get the lenght of the message
+      UDP_packetSize = Udp.available();
+      byte UDP_message[UDP_packetSize];
+      // Read the message from the buffer
+      Udp.read(UDP_message, UDP_packetSize);
+      
+      // Check if the message is long enough to extract the RGB value
+      if (UDP_packetSize >= UDP_RGB_offset+3) {
+        m_rgb_state = true;
+        m_rgb_brightness = 255;
+        m_rgb_red = UDP_message[UDP_RGB_offset];
+        m_rgb_green = UDP_message[UDP_RGB_offset+1];
+        m_rgb_blue = UDP_message[UDP_RGB_offset+2];
+        if (transition_time_s <= 0) {
+          setColor();
+        } else {
+          Transition();
+        }
+      }
+    }
+    if (now - last_publish_ms > 10000) {
+      last_publish_ms = now;
+      publishCombinedJsonState();
+      publishRGBJsonState();
+      publishWhiteJsonState();
+    }
   }
 }
