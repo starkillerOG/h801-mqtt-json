@@ -965,10 +965,10 @@ void Transition_loop(unsigned long now) {
     // at the end of a color transition 
     if (transitionStepCount[0]>=abs(n_step[0]) && transitionStepCount[1]>=abs(n_step[1]) && transitionStepCount[2]>=abs(n_step[2]) && transitionStepCount[3]>=abs(n_step[3]) && transitionStepCount[4]>=abs(n_step[4])) {
       transitioning = false;
-      get_m_state_from_transition_state();
-      setWhite();
-      setColor();
       if(!UDP_stream) {
+        get_m_state_from_transition_state();
+        setWhite();
+        setColor();
         publishCombinedJsonState();
         publishRGBJsonState();
         publishWhiteJsonState();
