@@ -1,6 +1,6 @@
 # MQTT JSON firmware for H801 LED dimmer
 
-The is an alternative firmware for the H801 LED dimmer that uses MQTT JSON as a control channel. This makes it easy to integrate into Home Assistant and other Home Automation applications.
+The is an alternative firmware for the H801 LED dimmer that uses MQTT JSON as a control channel. This makes it easy to integrate into Home Assistant and other Home Automation applications. It also support UDP streams for fast color syncing. Therefore this firmware can be used with Hyperion to sync the color to a TV screen.
 
 It is meant to control the 5 channels of the H801 to simultaneously control an RGB and a Warm-white/Cold-white Led strip such as an 5050 RGB LED strip and a 5025 Dual White strip.
 
@@ -8,6 +8,7 @@ This firmware is based on:
 1. https://github.com/open-homeautomation/h801/blob/master/mqtt/mqtt.ino
 1. https://github.com/bruhautomation/ESP-MQTT-JSON-Digital-LEDs/blob/master/ESP_MQTT_Digital_LEDs/ESP_MQTT_Digital_LEDs.ino
 1. https://www.arduino.cc/en/Tutorial/ColorCrossfader
+1. https://github.com/ambilight-4-mediaportal/AtmoOrb/tree/master/ESP8266/ESP8266_H801
 
 ![alt text](https://raw.githubusercontent.com/starkillerOG/h801-mqtt-json/master/pictures/H801-WiFi-LED-Controller.jpg)
 
@@ -24,6 +25,7 @@ The RGB strip is controlled using:
 | "state"         | string           | "ON"/"OFF"                           |                                                   |
 | "brightness"    | int              | 0-255                                |                                                   |
 | "color"         | dict with 3x int | {"r": 0-255, "g": 0-255, "b": 0-255} |                                                   |
+| "effect"        | string           | "color_mode"/"HDMI"                  | will switch to HDMI/UDP mode or color_mode        |
 | "transition"    | float            | 0-66845.7                            | transition time in seconds, only for this command |
 
 The Dual white strip is controlled using:
@@ -43,7 +45,7 @@ A combination of both an RGB and dual white strip is controlled using:
 | "brightness"    | int              | 0-255                                | applies to both strips                                          |
 | "color"         | dict with 3x int | {"r": 0-255, "g": 0-255, "b": 0-255} | will turn off the dual white strip                              |
 | "color_temp"    | int              | 153-500                              | will turn off the rgb strip                                     |
-| "effect"        | string           | "white_mode"/"color_mode"            | will turn on/off rgb strip and turn off/on the dual white strip |
+| "effect"        | string           | "white_mode"/"color_mode"/"HDMI"     | will turn on/off rgb strip and turn off/on the dual white strip or switch to HDMI/UDP mode |
 | "transition"    | float            | 0-66845.7                            | transition time in seconds, only for this command               |
 
 Global settings:
@@ -71,6 +73,8 @@ Notes:
 | LedStrip/LED1/settings/json_set           | Set additional global settings using JSON messages                                                |
 | LedStrip/LED1/active                      | Topic to receive the ESP_ID at the start of the module                                            |
 
+## UDP streams / HDMI mode
+When sending a `{"effect": "HDMI"}` command, the H801 will enter HDMI/UDP mode in which it will start listening to a UDP multicast stream configured in the Config.h file (`UDP_IP` and `UDP_Port`). The UDP messages received schould contain 3 subsecent bytes coding for Red, Green and Blue respectively. The position of these 3 bytes can be set using `UDP_RGB_offset` in the Config.h file. In this way fast steams (>5 Hz) of color data can be sent to the H801. In between the received colors a smooth transition will take place configured by the `UDP_transition_time_s` in the Config.h file. This can be used in combination with Hyperion setup as a UDP device to sync the H801 to the colors of a TV screen: https://hyperion-project.org/wiki/UDP-Device. For more information about Hyperion see https://hyperion-project.org/wiki/Introduction.
 
 ## Flashing the H801
 
@@ -140,6 +144,8 @@ light:
     command_topic: "LedStrip/LED1/rgb/json_set"
     brightness: true
     rgb: true
+    effect: true
+    effect_list: ["color_mode", "HDMI"]
     qos: 0
     optimistic: false
 
@@ -162,7 +168,7 @@ light:
     color_temp: true
     rgb: true
     effect: true
-    effect_list: ["white_mode", "color_mode", "both_mode"]
+    effect_list: ["white_mode", "color_mode", "both_mode", "HDMI"]
     qos: 0
     optimistic: false
 ```
