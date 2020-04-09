@@ -32,7 +32,7 @@
 const IPAddress UDP_IP(000, 00, 00, 0); // UDP multicast IP address, leave at 0 if you do not use UDP/HDMI streams
 #define UDP_Port 00000                  // UDP multicast port number, leave at 0 if you do not use UDP/HDMI streams
 #define UDP_RGB_offset 0                // offset in bytes in the UDP message where the byte coding for the RED color starts
-#define UDP_transition_time_s 0.1       // transition time in seconds between color changes during UDP streams
+#define UDP_transition_time_s 0.2       // transition time in seconds between color changes during UDP streams
 
 //OTA update
 #define OTA_port 80
