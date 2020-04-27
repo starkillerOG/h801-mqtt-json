@@ -81,7 +81,7 @@ When sending a `{"effect": "HDMI"}` command, the H801 will enter HDMI/UDP mode i
 1. Open the Config.h file and configure your WIFI credentials, MQTT Broker credentials and OTA credentials.
     1. It is highly recommended to change the username and password to something else for security.
 1. Open the case and solder 6 Jumers on the board. Four are needed for the serial connection (GND, 3.3V, RX und TX) and two are needed for the Jumper (J1 and J2) to enter the flash mode.
-1. Download Arduino IDE (in my case 1.8.10) and prepare the IDE by opening the preferences window.
+1. Download Arduino IDE (in my case 1.8.12) and prepare the IDE by opening the preferences window.
 1. Enter ```http://arduino.esp8266.com/stable/package_esp8266com_index.json``` into additional board manager URLs field.
 1. Open boards manager from tools > board menu and install esp8266 platform 
 1. Install following new library using the library manager. ("Sketch" menu and then include library > Manage Libraries).
