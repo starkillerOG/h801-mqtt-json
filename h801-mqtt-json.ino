@@ -458,7 +458,7 @@ bool processRGBJson(char* message) {
       if (m_rgb_brightness == 0) {
         m_rgb_brightness = 255;
       }
-      if (m_rgb_red == 0 && m_rgb_green == 0 && m_rgb_blue ==0) {
+      if (m_rgb_red == 0 && m_rgb_green == 0 && m_rgb_blue == 0) {
         m_rgb_red = 255;
         m_rgb_green = 255;
         m_rgb_blue = 255;
@@ -624,7 +624,7 @@ bool processCombinedJson(char* message) {
       if (m_combined_brightness == 0) {
         m_combined_brightness = 255;
       }
-      if (m_rgb_red == 0 && m_rgb_green == 0 && m_rgb_blue ==0) {
+      if (m_rgb_red == 0 && m_rgb_green == 0 && m_rgb_blue == 0) {
         m_rgb_red = 255;
         m_rgb_green = 255;
         m_rgb_blue = 255;
