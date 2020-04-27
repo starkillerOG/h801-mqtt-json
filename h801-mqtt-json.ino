@@ -268,6 +268,7 @@ void publishRGBJsonState() {
 
   if (UDP_stream) {
     m_effect = "HDMI";
+    root["state"] = LIGHT_ON;
   } else {
     m_effect = "color_mode";
   }
@@ -319,6 +320,7 @@ void publishCombinedJsonState() {
 
   if (UDP_stream) {
     m_effect = "HDMI";
+    root["state"] = LIGHT_ON;
   } else if (m_white_state && !m_rgb_state) {
     m_effect = "white_mode";
   } else if (!m_white_state && m_rgb_state) {
@@ -452,6 +454,15 @@ bool processRGBJson(char* message) {
   if (root.containsKey("state")) {
     if (strcmp(root["state"], LIGHT_ON) == 0) {
       m_rgb_state = true;
+      //check brightness and color not to be 0
+      if (m_rgb_brightness == 0) {
+        m_rgb_brightness = 255;
+      }
+      if (m_rgb_red == 0 && m_rgb_green == 0 && m_rgb_blue ==0) {
+        m_rgb_red = 255;
+        m_rgb_green = 255;
+        m_rgb_blue = 255;
+      }
     }
     else if (strcmp(root["state"], LIGHT_OFF) == 0) {
       m_rgb_state = false;
@@ -537,6 +548,10 @@ bool processWhiteJson(char* message) {
   if (root.containsKey("state")) {
     if (strcmp(root["state"], LIGHT_ON) == 0) {
       m_white_state = true;
+      //check brightness not to be 0
+      if (m_white_brightness == 0) {
+        m_white_brightness = 255;
+      }
     }
     else if (strcmp(root["state"], LIGHT_OFF) == 0) {
       m_white_state = false;
@@ -598,6 +613,21 @@ bool processCombinedJson(char* message) {
       } else {
         m_white_state = false;
         m_rgb_state = true;
+      }
+      //check brightness and color not to be 0
+      if (m_rgb_brightness == 0) {
+        m_rgb_brightness = 255;
+      }
+      if (m_white_brightness == 0) {
+        m_white_brightness = 255;
+      }
+      if (m_combined_brightness == 0) {
+        m_combined_brightness = 255;
+      }
+      if (m_rgb_red == 0 && m_rgb_green == 0 && m_rgb_blue ==0) {
+        m_rgb_red = 255;
+        m_rgb_green = 255;
+        m_rgb_blue = 255;
       }
     }
     else if (strcmp(root["state"], LIGHT_OFF) == 0) {
