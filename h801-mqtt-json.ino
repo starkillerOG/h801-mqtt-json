@@ -1071,7 +1071,7 @@ void  get_m_state_from_transition_state(void) {
     m_rgb_brightness = t_rgb_brightness_begin;
   } else {
     m_rgb_state = true;
-    m_rgb_brightness = _max(transition_red, _max(transition_green, transition_blue));
+    m_rgb_brightness = std::max(transition_red, std::max(transition_green, transition_blue));
     m_rgb_red = map(transition_red, 0, m_rgb_brightness, 0, 255); 
     m_rgb_green = map(transition_green, 0, m_rgb_brightness, 0, 255); 
     m_rgb_blue = map(transition_blue, 0, m_rgb_brightness, 0, 255); 
@@ -1084,7 +1084,7 @@ void  get_m_state_from_transition_state(void) {
     m_w2 = t_w2_begin;
   } else {
     m_white_state = true;
-    m_white_brightness = _max(transition_w1, transition_w2);
+    m_white_brightness = std::max(transition_w1, transition_w2);
     m_w1 = map(transition_w1, 0, m_white_brightness, 0, 255);
     m_w2 = map(transition_w2, 0, m_white_brightness, 0, 255);
   }
