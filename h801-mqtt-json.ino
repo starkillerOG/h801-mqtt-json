@@ -350,7 +350,7 @@ void publishJsonSettings() {
   rgb_mix["g"] = RGB_mixing[1];
   rgb_mix["b"] = RGB_mixing[2];
   root["chip_id"] = myhostname;
-  root["IP"] = ip;
+  root["IP"] = ip.toString();
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
