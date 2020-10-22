@@ -71,7 +71,7 @@ Notes:
 | LedStrip/LED1/combined/json_set           | Set both the RGB and dual white strip using JSON messages                                         |
 | LedStrip/LED1/settings/json_status        | Get additional global settings in JSON format on this topic                                       |
 | LedStrip/LED1/settings/json_set           | Set additional global settings using JSON messages                                                |
-| LedStrip/LED1/active                      | Topic to receive the ESP_ID at the start of the module                                            |
+| LedStrip/LED1/active                      | Topic to receive availability of the device through LWT message (online/offline)                  |
 
 ## UDP streams / HDMI mode
 When sending a `{"effect": "HDMI"}` command, the H801 will enter HDMI/UDP mode in which it will start listening to a UDP multicast stream configured in the Config.h file (`UDP_IP` and `UDP_Port`). The UDP messages received schould contain 3 subsecent bytes coding for Red, Green and Blue respectively. The position of these 3 bytes can be set using `UDP_RGB_offset` in the Config.h file. In this way fast steams (>5 Hz) of color data can be sent to the H801. In between the received colors a smooth transition will take place configured by the `UDP_transition_time_s` in the Config.h file. This can be used in combination with Hyperion setup as a UDP device to sync the H801 to the colors of a TV screen: https://hyperion-project.org/wiki/UDP-Device. For more information about Hyperion see https://hyperion-project.org/wiki/Introduction.
@@ -142,6 +142,7 @@ light:
     name: "RGB"
     state_topic: "LedStrip/LED1/rgb/json_status"
     command_topic: "LedStrip/LED1/rgb/json_set"
+    availability_topic: "LedStrip/LED1/active"
     brightness: true
     rgb: true
     effect: true
@@ -154,6 +155,7 @@ light:
     name: "White"
     state_topic: "LedStrip/LED1/white/json_status"
     command_topic: "LedStrip/LED1/white/json_set"
+    availability_topic: "LedStrip/LED1/active"
     brightness: true
     color_temp: true
     qos: 0
@@ -164,6 +166,7 @@ light:
     name: "Combined"
     state_topic: "LedStrip/LED1/combined/json_status"
     command_topic: "LedStrip/LED1/combined/json_set"
+    availability_topic: "LedStrip/LED1/active"
     brightness: true
     color_temp: true
     rgb: true
