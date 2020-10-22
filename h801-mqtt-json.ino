@@ -39,6 +39,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 /********************************** program variables  *****************************************/
 char* chip_id = "00000000";
 char* myhostname = "esp00000000";
+IPAddress ip;
 uint8_t reconnect_N = 0;
 unsigned long last_publish_ms = 0;
 // transitioning variables
@@ -163,12 +164,14 @@ void setup()
 
   Serial1.println("");
 
+  ip = WiFi.localIP();
+
   if (WiFi.status() == WL_CONNECTED) {
     Serial1.println("");
     Serial1.print("Connected to ");
     Serial1.println(wifi_ssid_conf);
     Serial1.print("IP address: ");
-    Serial1.println(WiFi.localIP());
+    Serial1.println(ip);
   }
 
   // init the MQTT connection
@@ -347,6 +350,7 @@ void publishJsonSettings() {
   rgb_mix["g"] = RGB_mixing[1];
   rgb_mix["b"] = RGB_mixing[2];
   root["chip_id"] = myhostname;
+  root["IP"] = ip;
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
@@ -809,6 +813,7 @@ void reconnect() {
         digitalWrite(GREEN_PIN, 1);
       }
       
+      ip = WiFi.localIP();
       client.publish(MQTT_UP, MQTT_UP_online, true);
       // Once connected, publish an announcement...
       // publish the initial values
@@ -1097,7 +1102,8 @@ void  get_m_state_from_transition_state(void) {
 void  UDP_start_stop(void) {
   // check if the UDP multicast needs to be started or stopped
   if (UDP_stream == true && UDP_stream_begin == false) {
-    Udp.beginMulticast(WiFi.localIP(), UDP_IP, UDP_Port);
+    ip = WiFi.localIP();
+    Udp.beginMulticast(ip, UDP_IP, UDP_Port);
     transition_time_s = UDP_transition_time_s;
   } else if (UDP_stream == false && UDP_stream_begin == true) {
     Udp.stop();
