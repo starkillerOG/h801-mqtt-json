@@ -74,6 +74,8 @@ uint16_t UDP_packetSize = 0;
 
 // buffer used to send/receive data with MQTT
 #define JSON_BUFFER_SIZE 600
+#define MQTT_UP_online "online"
+#define MQTT_UP_offline "offline"
 
 
 /********************************** Light variables  *****************************************/
@@ -344,6 +346,7 @@ void publishJsonSettings() {
   rgb_mix["r"] = RGB_mixing[0];
   rgb_mix["g"] = RGB_mixing[1];
   rgb_mix["b"] = RGB_mixing[2];
+  root["chip_id"] = myhostname;
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
@@ -796,7 +799,7 @@ void reconnect() {
   while (!client.connected()) {
     Serial1.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(chip_id, mqtt_user, mqtt_password)) {
+    if (client.connect(chip_id, mqtt_user, mqtt_password, MQTT_UP, 2, true, MQTT_UP_offline)) {
       Serial1.println("connected");
       // blink 10 times green LED for success connected
       for (int x=0; x < 10; x++){
@@ -806,7 +809,7 @@ void reconnect() {
         digitalWrite(GREEN_PIN, 1);
       }
       
-      client.publish(MQTT_UP, chip_id);
+      client.publish(MQTT_UP, MQTT_UP_online, true);
       // Once connected, publish an announcement...
       // publish the initial values
       publishCombinedJsonState();
