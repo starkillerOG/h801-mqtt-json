@@ -111,6 +111,7 @@ uint8_t m_w2 = 255;
 uint8_t m_combined_brightness = 255;
 boolean m_white_mode = true;
 String m_effect = "white_mode";
+String m_color_mode = "color_temp";
 
 // store state during transitioning
 uint8_t transition_red = 255;
@@ -325,15 +326,20 @@ void publishCombinedJsonState() {
 
   if (UDP_stream) {
     m_effect = "HDMI";
+    m_color_mode = "hs";
     root["state"] = LIGHT_ON;
   } else if (m_white_state && !m_rgb_state) {
     m_effect = "white_mode";
+    m_color_mode = "color_temp";
   } else if (!m_white_state && m_rgb_state) {
     m_effect = "color_mode";
+    m_color_mode = "hs";
   } else if (m_white_state && m_rgb_state) {
     m_effect = "both_mode";
+    m_color_mode = "hs";
   }
   root["effect"] = m_effect.c_str();
+  root["color_mode"] = m_color_mode.c_str();
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
