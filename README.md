@@ -118,7 +118,7 @@ If the connection to the MQTT fails it will blink with the red LED 10 times. It 
 
 ## Subsequent OTA updates of the H801
 After you have completed the initial flash of the H801 as described above, you will be able to flash the H801 Over The Air (OTA) using the wifi-connection. 
-1. If the H801 is connected to your wifi you schould be able to open a webbrowser on a PC and go to: "http://opa_update_h801_[Module_Name]/firmware" where [Module_Name] is specified in the Config.h file (default: LED1). Alternatively you can acces the same web-page by using the IP adress of the H801 module: "192.168.1.[IP]/firmware" where [IP] is the IP adress of the module which you can retrieve from the `LedStrip/LED1/settings/json_status` MQTT topic or by looking it up in your router.
+1. If the H801 is connected to your wifi you schould be able to open a webbrowser on a PC and go to: "http://opa_update_h801_[Module_Name]/firmware" where [Module_Name] is specified in the Config.h file (default: LED1). Alternatively you can acces the same web-page by using the IP adress of the H801 module: "http://192.168.1.[IP]/firmware" where [IP] is the IP adress of the module which you can retrieve from the `LedStrip/LED1/settings/json_status` MQTT topic or by looking it up in your router.
 1. It will ask for credentials if you browse to that web-page, these are the credentials specified in the Config.h file (OTA_username, OTA_password). After filling in the credentials you should see two buttons: "Choose File" and "Update".
 1. Open the latest h801-mqtt-json.ino file that you dowload from this github project with Arduino IDE.
 1. Select following in the menu tools:
