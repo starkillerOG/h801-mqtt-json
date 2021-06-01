@@ -74,7 +74,15 @@ Notes:
 | LedStrip/LED1/active                      | Topic to receive availability of the device through LWT message (online/offline)                  |
 
 ## UDP streams / HDMI mode
-When sending a `{"effect": "HDMI"}` command, the H801 will enter HDMI/UDP mode in which it will start listening to a UDP multicast stream configured in the Config.h file (`UDP_IP` and `UDP_Port`). The UDP messages received schould contain 3 subsecent bytes coding for Red, Green and Blue respectively. The position of these 3 bytes can be set using `UDP_RGB_offset` in the Config.h file. In this way fast steams (>5 Hz) of color data can be sent to the H801. In between the received colors a smooth transition will take place configured by the `UDP_transition_time_s` in the Config.h file. This can be used in combination with Hyperion setup as a UDP device to sync the H801 to the colors of a TV screen: https://hyperion-project.org/wiki/UDP-Device. For more information about Hyperion see https://hyperion-project.org/wiki/Introduction.
+When sending a `{"effect": "HDMI"}` command, the H801 will enter HDMI/UDP mode in which it will start listening to a UDP multicast stream configured in the Config.h file (`UDP_IP` and `UDP_Port`). The UDP messages received schould contain 3 subsecent bytes coding for Red, Green and Blue respectively. The position of these 3 bytes can be set using `UDP_RGB_offset` in the Config.h file. In this way fast steams (>5 Hz) of color data can be sent to the H801. In between the received colors a smooth transition will take place configured by the `UDP_transition_time_s` in the Config.h file. This can be used in combination with Hyperion setup as a UDP raw device to sync the H801 to the colors of a TV screen: https://docs.hyperion-project.org/en/user/leddevices/network/udpraw.html. For more information about Hyperion see https://docs.hyperion-project.org/ and https://hyperion-project.org.
+
+Configuring Hyperion under Configuration -> LED Hardware:
+- Controller Type: updraw
+- Hardware LED count: 1 (can be increased for multiple H801's in combination with a `UDP_RGB_offset` in the Config.h of the H801)
+- RGB byte order: RGB
+- Target IP: 239.15.18.6 (can be any multicast adress, as long as it is the same as in the Config.h of the H801)
+- Port: 49585 (can be any port, as long as it is the same as in the Config.h of the H801)
+- Latch Time: 0
 
 ## Flashing the H801
 
