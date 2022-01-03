@@ -4,11 +4,6 @@
 //      and https://github.com/bruhautomation/ESP-MQTT-JSON-Digital-LEDs/blob/master/ESP_MQTT_Digital_LEDs/ESP_MQTT_Digital_LEDs.ino
 //
 
-//IMPORTANT!!!!!!!!!!!!
-// inside PubSubClient.h the folloing needs to be changed on line 26:
-// PubSubClient.h is inside documents/Arduino/libraries/PubSubclient/src/PubSubClient.h
-// #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 800
-
 #define MQTT_MAX_PACKET_SIZE 800
 #define FIRMWARE_VERSION "2.0.0"
 #define MANUFACTURER "Huacanxing"
