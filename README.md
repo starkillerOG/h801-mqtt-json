@@ -13,10 +13,13 @@ This firmware is based on:
 ![alt text](https://raw.githubusercontent.com/starkillerOG/h801-mqtt-json/master/pictures/H801-WiFi-LED-Controller.jpg)
 
 ## Ways to control
-This firmware offers 3 possible ways of controlling the LED strips connected to the H801:
+This firmware offers 4 possible ways of controlling the LED strips connected to the H801:
 1. Control the RGB strip separately (as a separate light in HomeAssistant)
 1. Control the dual white strip separately (as a separate light in HomeAssistant)
 1. Control both the RGB and dual white strip in one light (as one light in HomeAssistant)
+1. Control only a single color white strip in one light (as one light in HomeAssistant)
+
+Using MQTT discovery HomeAssistant schould automatically discover the H801 and add the 4 coresponding light entities, simply disable the 3 that are not needed and you can immediately control the LED strip.
 
 The RGB strip is controlled using:
 
@@ -143,6 +146,8 @@ After you have completed the initial flash of the H801 as described above, you w
 
 ## Home assistant example configuration
 
+Note that all 4 lights schould be automatically discoverd by HomeAssistant. Therefore this manual configuration schould not be nessesary.
+
 ```yaml
 light:
   - platform: mqtt
@@ -166,6 +171,17 @@ light:
     availability_topic: "LedStrip/LED1/active"
     brightness: true
     color_temp: true
+    qos: 0
+    optimistic: false
+    
+  - platform: mqtt
+    schema: json
+    name: "White single"
+    state_topic: "LedStrip/LED1/white/json_status"
+    command_topic: "LedStrip/LED1/white/json_set"
+    availability_topic: "LedStrip/LED1/active"
+    brightness: true
+    color_temp: false
     qos: 0
     optimistic: false
 
