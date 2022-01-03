@@ -27,6 +27,7 @@
 #define MQTT_JSON_LIGHT_SETTINGS_COMMAND_TOPIC Mqtt_Base_Topic "/settings/json_set"
 
 #define MQTT_UP  Mqtt_Base_Topic "/active"
+#define MQTT_HOMEASSISTANT_DISCOVERY_PREFIX "homeassistant"
 
 //UDP/HDMI stream settings
 const IPAddress UDP_IP(000, 00, 00, 0); // UDP multicast IP address, leave at 0 if you do not use UDP/HDMI streams

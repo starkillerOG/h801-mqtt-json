@@ -7,9 +7,11 @@
 //IMPORTANT!!!!!!!!!!!!
 // inside PubSubClient.h the folloing needs to be changed on line 26:
 // PubSubClient.h is inside documents/Arduino/libraries/PubSubclient/src/PubSubClient.h
-// #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 600
+// #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 800
 
-#define MQTT_MAX_PACKET_SIZE 600
+#define MQTT_MAX_PACKET_SIZE 800
+#define FIRMWARE_VERSION "0.1.0"
+#define MANUFACTURER "Huacanxing"
 
 #include <string>
 
@@ -37,7 +39,7 @@ ESP8266WebServer httpServer(OTA_port);
 ESP8266HTTPUpdateServer httpUpdater;
 
 /********************************** program variables  *****************************************/
-char* chip_id = "00000000";
+char chip_id[9] = "00000000";
 char* myhostname = "esp00000000";
 IPAddress ip;
 uint8_t reconnect_N = 0;
@@ -74,7 +76,7 @@ boolean UDP_stream_begin = false;
 uint16_t UDP_packetSize = 0;
 
 // buffer used to send/receive data with MQTT
-#define JSON_BUFFER_SIZE 600
+#define JSON_BUFFER_SIZE 800
 #define MQTT_UP_online "online"
 #define MQTT_UP_offline "offline"
 
@@ -269,7 +271,8 @@ void publishRGBJsonState() {
   color["r"] = m_rgb_red;
   color["g"] = m_rgb_green;
   color["b"] = m_rgb_blue;
-  
+
+  root["color_mode"] = "rgb";
   root["brightness"] = m_rgb_brightness;
 
   if (UDP_stream) {
@@ -293,6 +296,7 @@ void publishWhiteJsonState() {
   
   m_color_temp = int(round((float(m_w2)/510 - float(m_w1)/510 + 0.5)*(max_color_temp - min_color_temp)) + min_color_temp);
   root["color_temp"] = m_color_temp;
+  root["color_mode"] = "color_temp";
   
   root["brightness"] = m_white_brightness;
 
@@ -362,6 +366,91 @@ void publishJsonSettings() {
   serializeJson(root, buffer, sizeof(buffer));
 
   client.publish(MQTT_JSON_LIGHT_SETTINGS_STATE_TOPIC, buffer, true);
+}
+
+void publishJsonDiscovery() {
+  publishJsonDiscovery_entity("combined", "combined", true, true);
+  publishJsonDiscovery_entity("rgb", "rgb", false, true);
+  publishJsonDiscovery_entity("white", "white", true, false);
+  publishJsonDiscovery_entity("white_single", "white", false, false);
+}
+
+void publishJsonDiscovery_entity(char type[], char type_topic[], bool sup_color_temp, bool sup_rgb) {
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
+  char idendifier[15] = "H801_";
+  strcat(idendifier, chip_id);
+  char unique_id[27] = "H801_";
+  strcat(unique_id, chip_id);
+  strcat(unique_id, "_");
+  strcat(unique_id, type);
+  char conf_url[strlen(OTA_update_path)+25] = "http://";
+  strcat(conf_url, ip.toString().c_str());
+  strcat(conf_url, OTA_update_path);
+  char entity_name[strlen(Module_Name)+14] = Module_Name;
+  strcat(entity_name, " ");
+  strcat(entity_name, type);
+
+  char stat_t[27] = "~/";
+  strcat(stat_t, type_topic);
+  strcat(stat_t, "/json_status");
+
+  char cmd_t[27] = "~/";
+  strcat(cmd_t, type_topic);
+  strcat(cmd_t, "/json_set");
+
+  root["~"] = Mqtt_Base_Topic;
+  root["name"] = entity_name;
+  root["unique_id"] = unique_id;
+  root["schema"] = "json";
+  root["stat_t"] = stat_t;
+  root["cmd_t"] = cmd_t;
+  root["avty_t"] = MQTT_UP;
+  root["brightness"] = true;
+  JsonArray sup_col_modes;
+  if(sup_color_temp | sup_rgb) {
+    sup_col_modes = root.createNestedArray("supported_color_modes");
+    root["color_mode"] = true;
+  }
+  if(sup_color_temp) {
+    sup_col_modes.add("color_temp");
+    root["min_mireds"] = min_color_temp;
+    root["max_mireds"] = max_color_temp;
+  }
+  if(sup_rgb) {
+    sup_col_modes.add("rgb");
+    root["effect"] = true;
+    JsonArray effect_list = root.createNestedArray("effect_list");
+    if(sup_color_temp) {
+      effect_list.add("white_mode");
+    }
+    effect_list.add("color_mode");
+    if(sup_color_temp) {
+      effect_list.add("both_mode");
+    }
+    if (UDP_Port != 0) {
+      effect_list.add("HDMI");
+    }
+  }
+  root["optimistic"] = false;
+  JsonObject device = root.createNestedObject("device");
+  device["configuration_url"] = conf_url;
+  JsonArray identifier_arr = device.createNestedArray("identifiers");
+  identifier_arr.add(idendifier);
+  device["model"] = "H801";
+  device["manufacturer"] = MANUFACTURER;
+  device["name"] = Module_Name;
+  device["sw_version"] = FIRMWARE_VERSION;
+  
+  char buffer[measureJson(root) + 1];
+  serializeJson(root, buffer, sizeof(buffer));
+
+  char mqtt_discovery_topic[strlen(MQTT_HOMEASSISTANT_DISCOVERY_PREFIX) + 45] = MQTT_HOMEASSISTANT_DISCOVERY_PREFIX;
+  strcat(mqtt_discovery_topic, "/light/H801_");
+  strcat(mqtt_discovery_topic, chip_id);
+  strcat(mqtt_discovery_topic, "/");
+  strcat(mqtt_discovery_topic, type);
+  strcat(mqtt_discovery_topic, "/config");
+  client.publish(mqtt_discovery_topic, buffer, true);
 }
 
 
@@ -827,6 +916,7 @@ void reconnect() {
       publishRGBJsonState();
       publishWhiteJsonState();
       publishJsonSettings();
+      publishJsonDiscovery();
       // ... and resubscribe
       client.subscribe(MQTT_JSON_LIGHT_RGB_COMMAND_TOPIC);
       client.subscribe(MQTT_JSON_LIGHT_WHITE_COMMAND_TOPIC);

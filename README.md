@@ -175,6 +175,7 @@ light:
     state_topic: "LedStrip/LED1/combined/json_status"
     command_topic: "LedStrip/LED1/combined/json_set"
     availability_topic: "LedStrip/LED1/active"
+    brightness: true
     color_mode: true
     supported_color_modes: ["color_temp", "rgb"]
     effect: true
