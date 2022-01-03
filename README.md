@@ -102,7 +102,7 @@ Configuring Hyperion under Configuration -> LED Hardware:
 1. IMORTANT: the PubSubClient only allows for a max of 128 bytes by default in a mqtt message. Therefore the MQTT_MAX_PACKET_SIZE needs to be changed for the PubSubClient.h
 1. open the PubSubClient.h file (default location: documents/Arduino/libraries/PubSubclient/src/PubSubClient.h)
 1. Go to line 26 of PubSubClient.h
-1. Change #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 600
+1. Change #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 800
 1. Connect the wires of your USB Serial adapter with the H801 (3.3V > 3.3V, GND > GND, RX > RX and TX > TX) and place a jumper or cable between J1 and J2
 1. Connect the Serial USB adapter with your computer. The H801 will be powered with the 3.3V from the USB Serial adapter and enters the flash mode. 
 1. Open the *.ino file 
