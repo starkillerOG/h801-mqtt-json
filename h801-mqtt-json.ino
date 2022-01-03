@@ -326,17 +326,17 @@ void publishCombinedJsonState() {
 
   if (UDP_stream) {
     m_effect = "HDMI";
-    m_color_mode = "hs";
+    m_color_mode = "rgb";
     root["state"] = LIGHT_ON;
   } else if (m_white_state && !m_rgb_state) {
     m_effect = "white_mode";
     m_color_mode = "color_temp";
   } else if (!m_white_state && m_rgb_state) {
     m_effect = "color_mode";
-    m_color_mode = "hs";
+    m_color_mode = "rgb";
   } else if (m_white_state && m_rgb_state) {
     m_effect = "both_mode";
-    m_color_mode = "hs";
+    m_color_mode = "rgb";
   }
   root["effect"] = m_effect.c_str();
   root["color_mode"] = m_color_mode.c_str();

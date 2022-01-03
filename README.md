@@ -175,9 +175,8 @@ light:
     state_topic: "LedStrip/LED1/combined/json_status"
     command_topic: "LedStrip/LED1/combined/json_set"
     availability_topic: "LedStrip/LED1/active"
-    brightness: true
-    color_temp: true
-    rgb: true
+    color_mode: true
+    supported_color_modes: ["color_temp", "rgb"]
     effect: true
     effect_list: ["white_mode", "color_mode", "both_mode", "HDMI"]
     qos: 0
