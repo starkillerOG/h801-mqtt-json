@@ -4,6 +4,8 @@ The is an alternative firmware for the H801 LED dimmer that uses MQTT JSON as a 
 
 It is meant to control the 5 channels of the H801 to simultaneously control an RGB and a Warm-white/Cold-white Led strip such as an 5050 RGB LED strip and a 5025 Dual White strip.
 
+[![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/starkillerOG)
+
 This firmware is based on:
 1. https://github.com/open-homeautomation/h801/blob/master/mqtt/mqtt.ino
 1. https://github.com/bruhautomation/ESP-MQTT-JSON-Digital-LEDs/blob/master/ESP_MQTT_Digital_LEDs/ESP_MQTT_Digital_LEDs.ino
