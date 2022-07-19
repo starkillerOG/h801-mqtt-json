@@ -404,7 +404,7 @@ void publishJsonDiscovery_entity(char type[], char type_topic[], bool sup_color_
   root["schema"] = "json";
   root["stat_t"] = stat_t;
   root["cmd_t"] = cmd_t;
-  root["avty_t"] = MQTT_UP;
+  root["avty_t"] = "~/active";
   root["brightness"] = true;
   JsonArray sup_col_modes;
   if(sup_color_temp | sup_rgb) {
