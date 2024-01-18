@@ -113,7 +113,7 @@ Configuring Hyperion under Configuration -> LED Hardware:
    1. Flash Mode: DIO
    1. Flash Frequency: 40MHz
    1. CPU Frequency: 80 MHz
-   1. Flash Size: 1M (64K SPIFFS)
+   1. Flash Size: 1MB (FS:64KB OTA:~470KB)
    1. Upload Speed: 115200
    1. Port: Select your COM Port of your Serial adapter e.g. COM5
 1. Select Sketch > Upload
@@ -139,7 +139,7 @@ After you have completed the initial flash of the H801 as described above, you w
    1. Flash Mode: DIO
    1. Flash Frequency: 40MHz
    1. CPU Frequency: 80 MHz
-   1. Flash Size: 1M (64K SPIFFS)
+   1. Flash Size: 1MB (FS:64KB OTA:~470KB)
    1. Upload Speed: 115200
 1. In the top bar select "Sketch" --> "Export Compiled Binary", after it completes there schould be a .bin file in the folder where you saved the h801-mqtt-json.ino file.
 1. Upload this .bin file to your H801 using first the "Choose File" and then the "Update" button of step 2.

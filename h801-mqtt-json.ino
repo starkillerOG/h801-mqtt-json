@@ -10,7 +10,7 @@
 // #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 800
 
 #define MQTT_MAX_PACKET_SIZE 800
-#define FIRMWARE_VERSION "2.0.0"
+#define FIRMWARE_VERSION "2.0.1"
 #define MANUFACTURER "Huacanxing"
 
 #include <string>
@@ -40,7 +40,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 
 /********************************** program variables  *****************************************/
 char chip_id[9] = "00000000";
-char* myhostname = "esp00000000";
+char myhostname[] = "esp00000000";
 IPAddress ip;
 uint8_t reconnect_N = 0;
 unsigned long last_publish_ms = 0;
@@ -375,7 +375,7 @@ void publishJsonDiscovery() {
   publishJsonDiscovery_entity("white_single", "white", false, false);
 }
 
-void publishJsonDiscovery_entity(char type[], char type_topic[], bool sup_color_temp, bool sup_rgb) {
+void publishJsonDiscovery_entity(const char type[], const char type_topic[], bool sup_color_temp, bool sup_rgb) {
   StaticJsonDocument<JSON_BUFFER_SIZE> root;
   char idendifier[15] = "H801_";
   strcat(idendifier, chip_id);
@@ -386,8 +386,7 @@ void publishJsonDiscovery_entity(char type[], char type_topic[], bool sup_color_
   char conf_url[strlen(OTA_update_path)+25] = "http://";
   strcat(conf_url, ip.toString().c_str());
   strcat(conf_url, OTA_update_path);
-  char entity_name[strlen(Module_Name)+14] = Module_Name;
-  strcat(entity_name, " ");
+  char entity_name[14] = "";
   strcat(entity_name, type);
 
   char stat_t[27] = "~/";
