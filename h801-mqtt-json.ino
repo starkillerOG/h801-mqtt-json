@@ -10,7 +10,7 @@
 // #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 800
 
 #define MQTT_MAX_PACKET_SIZE 800
-#define FIRMWARE_VERSION "2.0.1"
+#define FIRMWARE_VERSION "2.0.2"
 #define MANUFACTURER "Huacanxing"
 
 #include <string>
@@ -408,7 +408,6 @@ void publishJsonDiscovery_entity(const char type[], const char type_topic[], boo
   JsonArray sup_col_modes;
   if(sup_color_temp | sup_rgb) {
     sup_col_modes = root.createNestedArray("supported_color_modes");
-    root["color_mode"] = true;
   }
   if(sup_color_temp) {
     sup_col_modes.add("color_temp");
