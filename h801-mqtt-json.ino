@@ -153,7 +153,6 @@ void setup()
   Serial1.println();
   Serial1.println();
 
-
   // Setup WIFI
   WiFi.mode(WIFI_STA);
   WiFi.begin(wifi_ssid_conf, wifi_password_conf);
@@ -178,6 +177,7 @@ void setup()
   }
 
   // init the MQTT connection
+  client.setBufferSize(MQTT_MAX_PACKET_SIZE);
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
 
