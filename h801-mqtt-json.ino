@@ -264,6 +264,9 @@ void setLEDpin(int LED_pin, uint8_t LED_value){
 /********************************** Publish states *****************************************/
 
 void publishRGBJsonState() {
+  if (transitioning) {
+    return;  // let the transition publish intermediate states
+  }
   publishRGBJsonStateVal(m_rgb_state, m_rgb_red, m_rgb_green, m_rgb_blue, m_rgb_brightness);
 }
 void publishRGBJsonStateVal(boolean p_rgb_state, uint8_t p_rgb_red, uint8_t p_rgb_green, uint8_t p_rgb_blue, uint8_t p_rgb_brightness) {
@@ -293,6 +296,9 @@ void publishRGBJsonStateVal(boolean p_rgb_state, uint8_t p_rgb_red, uint8_t p_rg
 }
 
 void publishWhiteJsonState() {
+  if (transitioning) {
+    return;  // let the transition publish intermediate states
+  }
   publishWhiteJsonStateVal(m_white_state, m_w1, m_w2, m_white_brightness);
 }
 void publishWhiteJsonStateVal(boolean p_white_state, uint8_t p_w1, uint8_t p_w2, uint8_t p_white_brightness) {
@@ -314,6 +320,9 @@ void publishWhiteJsonStateVal(boolean p_white_state, uint8_t p_w1, uint8_t p_w2,
 }
 
 void publishCombinedJsonState() {
+  if (transitioning) {
+    return;  // let the transition publish intermediate states
+  }
   publishCombinedJsonStateVal(m_white_state, m_w1, m_w2, m_rgb_state, m_rgb_red, m_rgb_green, m_rgb_blue, m_combined_brightness);
 }
 void publishCombinedJsonStateVal(boolean p_white_state, uint8_t p_w1, uint8_t p_w2, boolean p_rgb_state, uint8_t p_rgb_red, uint8_t p_rgb_green, uint8_t p_rgb_blue, uint8_t p_combined_brightness) {
@@ -1104,7 +1113,7 @@ void Transition(void) {
   
   // Set variables for beginning transition
   start_transition_loop_ms = millis();
-  last_transition_publish = millis();
+  last_transition_publish = 0;
   transitioning = true;
 }
 
