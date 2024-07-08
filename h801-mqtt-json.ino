@@ -217,11 +217,11 @@ void convert_color_temp(void) {
     m_w1 = 255;
     m_w2 = 255;
   } else if (temp_unit > 0) {
-    m_w1 = int(round(1-temp_unit*255));
+    m_w1 = int(round((1.0-temp_unit)*255));
     m_w2 = 255;
   } else if (temp_unit < 0){
     m_w1 = 255;
-    m_w2 = int(round(1+temp_unit*255));
+    m_w2 = int(round((1.0+temp_unit)*255));
   } else {
     return;
   }
