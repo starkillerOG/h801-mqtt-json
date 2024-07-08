@@ -19,6 +19,7 @@
 
 #define MQTT_JSON_LIGHT_WHITE_STATE_TOPIC Mqtt_Base_Topic "/white/json_status"
 #define MQTT_JSON_LIGHT_WHITE_COMMAND_TOPIC Mqtt_Base_Topic "/white/json_set"
+#define MQTT_JSON_LIGHT_WHITE_SINGLE_COMMAND_TOPIC Mqtt_Base_Topic "/white_single/json_set"
 
 #define MQTT_JSON_LIGHT_COMBINED_STATE_TOPIC Mqtt_Base_Topic "/combined/json_status"
 #define MQTT_JSON_LIGHT_COMBINED_COMMAND_TOPIC Mqtt_Base_Topic "/combined/json_set"

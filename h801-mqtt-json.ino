@@ -105,7 +105,7 @@ uint8_t m_rgb_blue = 255;
 // store the state of the white LED strip (colors, brightness, ...)
 boolean m_white_state = false;
 uint8_t m_white_brightness = 255;
-uint16_t m_color_temp = 500;
+uint16_t m_color_temp = max_color_temp;
 uint8_t m_w1 = 255;
 uint8_t m_w2 = 255;
 
@@ -264,16 +264,19 @@ void setLEDpin(int LED_pin, uint8_t LED_value){
 /********************************** Publish states *****************************************/
 
 void publishRGBJsonState() {
+  publishRGBJsonStateVal(m_rgb_state, m_rgb_red, m_rgb_green, m_rgb_blue, m_rgb_brightness);
+}
+void publishRGBJsonStateVal(boolean p_rgb_state, uint8_t p_rgb_red, uint8_t p_rgb_green, uint8_t p_rgb_blue, uint8_t p_rgb_brightness) {
   StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
-  root["state"] = (m_rgb_state) ? LIGHT_ON : LIGHT_OFF;
+  root["state"] = (p_rgb_state) ? LIGHT_ON : LIGHT_OFF;
   JsonObject color = root.createNestedObject("color");
-  color["r"] = m_rgb_red;
-  color["g"] = m_rgb_green;
-  color["b"] = m_rgb_blue;
+  color["r"] = p_rgb_red;
+  color["g"] = p_rgb_green;
+  color["b"] = p_rgb_blue;
 
   root["color_mode"] = "rgb";
-  root["brightness"] = m_rgb_brightness;
+  root["brightness"] = p_rgb_brightness;
 
   if (UDP_stream) {
     m_effect = "HDMI";
@@ -290,15 +293,18 @@ void publishRGBJsonState() {
 }
 
 void publishWhiteJsonState() {
+  publishWhiteJsonStateVal(m_white_state, m_w1, m_w2, m_white_brightness);
+}
+void publishWhiteJsonStateVal(boolean p_white_state, uint8_t p_w1, uint8_t p_w2, uint8_t p_white_brightness) {
   StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
-  root["state"] = (m_white_state) ? LIGHT_ON : LIGHT_OFF;
+  root["state"] = (p_white_state) ? LIGHT_ON : LIGHT_OFF;
   
-  m_color_temp = int(round((float(m_w2)/510 - float(m_w1)/510 + 0.5)*(max_color_temp - min_color_temp)) + min_color_temp);
+  m_color_temp = int(round((float(p_w2)/510 - float(p_w1)/510 + 0.5)*(max_color_temp - min_color_temp)) + min_color_temp);
   root["color_temp"] = m_color_temp;
   root["color_mode"] = "color_temp";
   
-  root["brightness"] = m_white_brightness;
+  root["brightness"] = p_white_brightness;
 
 
   char buffer[measureJson(root) + 1];
@@ -308,37 +314,40 @@ void publishWhiteJsonState() {
 }
 
 void publishCombinedJsonState() {
+  publishCombinedJsonStateVal(m_white_state, m_w1, m_w2, m_rgb_state, m_rgb_red, m_rgb_green, m_rgb_blue, m_combined_brightness);
+}
+void publishCombinedJsonStateVal(boolean p_white_state, uint8_t p_w1, uint8_t p_w2, boolean p_rgb_state, uint8_t p_rgb_red, uint8_t p_rgb_green, uint8_t p_rgb_blue, uint8_t p_combined_brightness) {
   StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
-  root["state"] = (m_white_state || m_rgb_state) ? LIGHT_ON : LIGHT_OFF;
+  root["state"] = (p_white_state || p_rgb_state) ? LIGHT_ON : LIGHT_OFF;
 
-  m_color_temp = int(round((float(m_w2)/510 - float(m_w1)/510 + 0.5)*(max_color_temp - min_color_temp)) + min_color_temp);
+  m_color_temp = int(round((float(p_w2)/510 - float(p_w1)/510 + 0.5)*(max_color_temp - min_color_temp)) + min_color_temp);
   root["color_temp"] = m_color_temp;
 
-  root["brightness"] = m_combined_brightness;
+  root["brightness"] = p_combined_brightness;
 
   JsonObject color = root.createNestedObject("color");
-  if (m_white_state && !m_rgb_state) {
+  if (p_white_state && !p_rgb_state) {
     color["r"] = 255;
     color["g"] = 255;
     color["b"] = 255;
   } else {
-    color["r"] = m_rgb_red;
-    color["g"] = m_rgb_green;
-    color["b"] = m_rgb_blue;
+    color["r"] = p_rgb_red;
+    color["g"] = p_rgb_green;
+    color["b"] = p_rgb_blue;
   }
 
   if (UDP_stream) {
     m_effect = "HDMI";
     m_color_mode = "rgb";
     root["state"] = LIGHT_ON;
-  } else if (m_white_state && !m_rgb_state) {
+  } else if (p_white_state && !p_rgb_state) {
     m_effect = "white_mode";
     m_color_mode = "color_temp";
-  } else if (!m_white_state && m_rgb_state) {
+  } else if (!p_white_state && p_rgb_state) {
     m_effect = "color_mode";
     m_color_mode = "rgb";
-  } else if (m_white_state && m_rgb_state) {
+  } else if (p_white_state && p_rgb_state) {
     m_effect = "both_mode";
     m_color_mode = "rgb";
   }
@@ -394,7 +403,7 @@ void publishJsonDiscovery_entity(const char type[], const char type_topic[], boo
   strcat(stat_t, "/json_status");
 
   char cmd_t[27] = "~/";
-  strcat(cmd_t, type_topic);
+  strcat(cmd_t, type);
   strcat(cmd_t, "/json_set");
 
   root["~"] = Mqtt_Base_Topic;
@@ -495,6 +504,21 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     if (!processWhiteJson(message)) {
       return;
     }
+    if (transition_time_s <= 0) {
+      setWhite();
+    } else {
+      Transition();
+    }
+    publishWhiteJsonState();
+  }
+
+  // Handle White single commands
+  if (String(MQTT_JSON_LIGHT_WHITE_SINGLE_COMMAND_TOPIC).equals(p_topic)) {
+    if (!processWhiteJson(message)) {
+      return;
+    }
+    m_color_temp = max_color_temp;
+    convert_color_temp();
     if (transition_time_s <= 0) {
       setWhite();
     } else {
@@ -918,6 +942,7 @@ void reconnect() {
       // ... and resubscribe
       client.subscribe(MQTT_JSON_LIGHT_RGB_COMMAND_TOPIC);
       client.subscribe(MQTT_JSON_LIGHT_WHITE_COMMAND_TOPIC);
+      client.subscribe(MQTT_JSON_LIGHT_WHITE_SINGLE_COMMAND_TOPIC);
       client.subscribe(MQTT_JSON_LIGHT_COMBINED_COMMAND_TOPIC);
       client.subscribe(MQTT_JSON_LIGHT_SETTINGS_COMMAND_TOPIC);
     } else {
@@ -1094,11 +1119,10 @@ void Transition_loop(unsigned long now) {
     transition_w1 = ExecuteTransition(3, transition_w1, W1_PIN);
     transition_w2 = ExecuteTransition(4, transition_w2, W2_PIN);
 
-    // at the end of a color transition 
+    // at the end of a color transition
     if (transitionStepCount[0]>=abs(n_step[0]) && transitionStepCount[1]>=abs(n_step[1]) && transitionStepCount[2]>=abs(n_step[2]) && transitionStepCount[3]>=abs(n_step[3]) && transitionStepCount[4]>=abs(n_step[4])) {
       transitioning = false;
       if(!UDP_stream) {
-        get_m_state_from_transition_state();
         setWhite();
         setColor();
         publishCombinedJsonState();
@@ -1111,10 +1135,7 @@ void Transition_loop(unsigned long now) {
     if (now - last_transition_publish > 15000) {
       last_transition_publish = now;
       if(!UDP_stream) {
-        get_m_state_from_transition_state();
-        publishCombinedJsonState();
-        publishRGBJsonState();
-        publishWhiteJsonState();
+        publish_from_transition_state();
       }
     }
   }
@@ -1162,34 +1183,43 @@ void  get_transition_state_from_begin(void) {
   }
 }
 
-void  get_m_state_from_transition_state(void) {
+void  publish_from_transition_state(void) {
+  boolean p_white_state, p_rgb_state;
+  uint8_t p_w1, p_w2, p_rgb_red, p_rgb_green, p_rgb_blue, p_white_brightness, p_rgb_brightness, p_combined_brightness;
+  
   // get RGB variables from transition variabels
   if (transition_red == 0 && transition_green == 0 && transition_blue == 0) {
     // now RGB is off
-    m_rgb_state = false;
-    m_rgb_red = t_red_begin;
-    m_rgb_green = t_green_begin;
-    m_rgb_blue = t_blue_begin;
-    m_rgb_brightness = t_rgb_brightness_begin;
+    p_rgb_state = false;
+    p_rgb_red = t_red_begin;
+    p_rgb_green = t_green_begin;
+    p_rgb_blue = t_blue_begin;
+    p_rgb_brightness = t_rgb_brightness_begin;
   } else {
-    m_rgb_state = true;
-    m_rgb_brightness = std::max(transition_red, std::max(transition_green, transition_blue));
-    m_rgb_red = map(transition_red, 0, m_rgb_brightness, 0, 255); 
-    m_rgb_green = map(transition_green, 0, m_rgb_brightness, 0, 255); 
-    m_rgb_blue = map(transition_blue, 0, m_rgb_brightness, 0, 255); 
+    p_rgb_state = true;
+    p_rgb_brightness = std::max(transition_red, std::max(transition_green, transition_blue));
+    p_rgb_red = map(transition_red, 0, m_rgb_brightness, 0, 255); 
+    p_rgb_green = map(transition_green, 0, m_rgb_brightness, 0, 255); 
+    p_rgb_blue = map(transition_blue, 0, m_rgb_brightness, 0, 255); 
   }
   // get white variables from transition variabels
   if (transition_w1 == 0 && transition_w2 == 0) {
-    m_white_state = false;
-    m_white_brightness = t_white_brightness_begin;
-    m_w1 = t_w1_begin;
-    m_w2 = t_w2_begin;
+    p_white_state = false;
+    p_white_brightness = t_white_brightness_begin;
+    p_w1 = t_w1_begin;
+    p_w2 = t_w2_begin;
   } else {
-    m_white_state = true;
-    m_white_brightness = std::max(transition_w1, transition_w2);
-    m_w1 = map(transition_w1, 0, m_white_brightness, 0, 255);
-    m_w2 = map(transition_w2, 0, m_white_brightness, 0, 255);
+    p_white_state = true;
+    p_white_brightness = std::max(transition_w1, transition_w2);
+    p_w1 = map(transition_w1, 0, p_white_brightness, 0, 255);
+    p_w2 = map(transition_w2, 0, p_white_brightness, 0, 255);
   }
+
+  p_combined_brightness = std::max(p_white_brightness, p_rgb_brightness);
+
+  publishCombinedJsonStateVal(p_white_state, p_w1, p_w2, p_rgb_state, p_rgb_red, p_rgb_green, p_rgb_blue, p_combined_brightness);
+  publishRGBJsonStateVal(p_rgb_state, p_rgb_red, p_rgb_green, p_rgb_blue, p_rgb_brightness);
+  publishWhiteJsonStateVal(p_white_state, p_w1, p_w2, p_white_brightness);
 }
 
 /********************************** UDP/HDMI code *****************************************/
