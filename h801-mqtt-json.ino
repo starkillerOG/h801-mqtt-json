@@ -10,7 +10,7 @@
 // #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 800
 
 #define MQTT_MAX_PACKET_SIZE 800
-#define FIRMWARE_VERSION "2.0.3"
+#define FIRMWARE_VERSION "2.0.4"
 #define MANUFACTURER "Huacanxing"
 
 #include <string>
@@ -40,10 +40,12 @@ ESP8266HTTPUpdateServer httpUpdater;
 
 /********************************** program variables  *****************************************/
 char chip_id[9] = "00000000";
+char client_id[16] = "00000000_00000";
 char myhostname[] = "esp00000000";
 IPAddress ip;
 uint8_t reconnect_N = 0;
 unsigned long last_publish_ms = 0;
+unsigned long last_mqtt_connected = 0;
 // transitioning variables
 float transition_time_s_standard = transition_time_s_conf;
 float transition_time_s = transition_time_s_conf;
@@ -378,6 +380,7 @@ void publishJsonSettings() {
   rgb_mix["g"] = RGB_mixing[1];
   rgb_mix["b"] = RGB_mixing[2];
   root["chip_id"] = myhostname;
+  root["client_id"] = client_id;
   root["IP"] = ip.toString();
 
   char buffer[measureJson(root) + 1];
@@ -929,7 +932,8 @@ void reconnect() {
   while (!client.connected()) {
     Serial1.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(chip_id, mqtt_user, mqtt_password, MQTT_UP, 2, true, MQTT_UP_offline)) {
+    sprintf(client_id, "%s_%05d", chip_id, random(1, 99999));
+    if (client.connect(client_id, mqtt_user, mqtt_password, MQTT_UP, 2, true, MQTT_UP_offline)) {
       Serial1.println("connected");
       // blink 10 times green LED for success connected
       for (int x=0; x < 10; x++){
@@ -981,11 +985,16 @@ void reconnect() {
 
 void loop()
 {  
+  unsigned long now = millis();
   if (WiFi.status() == WL_CONNECTED) {
     //Confirm that still connected to MQTT broker
     if (!client.connected()) {
-      Serial1.println("Reconnecting to MQTT Broker");
-      reconnect();
+      if (now - last_mqtt_connected > 15000) {
+        Serial1.println("Reconnecting to MQTT Broker");
+        reconnect();
+      }
+    } else {
+      last_mqtt_connected = now;
     }
   } else {
       digitalWrite(RED_PIN, 0);
@@ -1004,12 +1013,12 @@ void loop()
   // Post the full status to MQTT every 60000 miliseconds. This is roughly once a minute
   // Usually, clients will store the value internally.
   // This is only used if a client starts up again and did not receive previous messages
-  unsigned long now = millis();
   if (now - last_publish_ms > 60000) {
     last_publish_ms = now;
     publishCombinedJsonState();
     publishRGBJsonState();
     publishWhiteJsonState();
+    client.publish(MQTT_UP, MQTT_UP_online, true);
   }
   // Process UDP messages if needed
   UDP_loop(now);
