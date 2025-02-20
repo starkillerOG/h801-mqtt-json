@@ -156,6 +156,8 @@ void setup()
   Serial1.println();
 
   // Setup WIFI
+  //WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  //WiFi.setOutputPower(20.5); // default is 20.5 which is max, 16.5 less interference, step size 0.25
   WiFi.mode(WIFI_STA);
   WiFi.begin(wifi_ssid_conf, wifi_password_conf);
 
@@ -406,6 +408,7 @@ void publishJsonSettings() {
   root["chip_id"] = myhostname;
   root["client_id"] = client_id;
   root["IP"] = ip.toString();
+  root["RSSI_dBm"] = WiFi.RSSI();
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
