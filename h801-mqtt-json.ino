@@ -10,7 +10,7 @@
 // #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 800
 
 #define MQTT_MAX_PACKET_SIZE 800
-#define FIRMWARE_VERSION "2.0.4"
+#define FIRMWARE_VERSION "2.1.0"
 #define MANUFACTURER "Huacanxing"
 
 #include <string>
