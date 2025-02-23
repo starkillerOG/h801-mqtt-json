@@ -49,6 +49,7 @@ unsigned long last_mqtt_connected = 0;
 // transitioning variables
 float transition_time_s_standard = transition_time_s_conf;
 float transition_time_s = transition_time_s_conf;
+unsigned long now;
 unsigned long last_transition_publish = 0;
 unsigned long start_transition_loop_ms = 0;
 unsigned long transition_ms = 0;
@@ -459,7 +460,7 @@ void publishJsonDiscovery() {
 
 void publishJsonDiscovery_entity(const char type[], bool sup_color_temp, bool sup_rgb) {
   StaticJsonDocument<JSON_BUFFER_SIZE> root;
-  char idendifier[15], unique_id[27], entity_name[14], stat_t[27], cmd_t[27];
+  char idendifier[15], unique_id[29], entity_name[16], stat_t[29], cmd_t[29];
   char conf_url[strlen(OTA_update_path)+25];
   sprintf(idendifier, "H801_%s", chip_id);
   sprintf(unique_id, "H801_%s_%s", chip_id, type);
@@ -514,7 +515,7 @@ void publishJsonDiscovery_entity(const char type[], bool sup_color_temp, bool su
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
 
-  char mqtt_discovery_topic[strlen(MQTT_HOMEASSISTANT_DISCOVERY_PREFIX) + 45];
+  char mqtt_discovery_topic[strlen(MQTT_HOMEASSISTANT_DISCOVERY_PREFIX) + 50];
   sprintf(mqtt_discovery_topic, "%s/light/H801_%s/%s/config", MQTT_HOMEASSISTANT_DISCOVERY_PREFIX, chip_id, type);
   client.publish(mqtt_discovery_topic, buffer, true);
 }
@@ -555,10 +556,11 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     }
     if (transition_time_s <= 0) {
       setColor();
+      publishRGBJsonState();
     } else {
       Transition();
+      // Let transition publish each 15s and @end
     }
-    publishRGBJsonState();
   }
 
   // Handle White commands
@@ -569,10 +571,11 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     }
     if (transition_time_s <= 0) {
       setWhite();
+      publishWhiteJsonState();
     } else {
       Transition();
+      // Let transition publish each 15s and @end
     }
-    publishWhiteJsonState();
   }
 
   // Handle White single 1 commands
@@ -583,10 +586,11 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     }
     if (transition_time_s <= 0) {
       setWhite();
+      publishWhiteSingle1JsonState();
     } else {
       Transition();
+      // Let transition publish each 15s and @end
     }
-    publishWhiteSingle1JsonState();
   }
 
   // Handle White single 2 commands
@@ -597,10 +601,11 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     }
     if (transition_time_s <= 0) {
       setWhite();
+      publishWhiteSingle2JsonState();
     } else {
       Transition();
+      // Let transition publish each 15s and @end
     }
-    publishWhiteSingle2JsonState();
   }
 
   // Handle combined commands
@@ -612,10 +617,11 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     if (transition_time_s <= 0) {
       setWhite();
       setColor();
+      publishCombinedJsonState();
     } else {
       Transition();
+      // Let transition publish each 15s and @end
     }
-    publishCombinedJsonState();
   }
 
   // Handle settings commands
@@ -796,7 +802,7 @@ bool processWhiteJson(char* message, bool single1, bool single2) {
         m_w1 = brightness;
       }
       if (single2){
-        m_w1 = brightness;
+        m_w2 = brightness;
       }
     }
   }
@@ -1084,7 +1090,7 @@ void reconnect() {
 
 void loop()
 {  
-  unsigned long now = millis();
+  now = millis();
   if (WiFi.status() == WL_CONNECTED) {
     //Confirm that still connected to MQTT broker
     if (!client.connected()) {
@@ -1122,9 +1128,9 @@ void loop()
     client.publish(MQTT_UP, MQTT_UP_online, true);
   }
   // Process UDP messages if needed
-  UDP_loop(now);
+  UDP_loop();
   // Process transitions if needed
-  Transition_loop(now);
+  Transition_loop();
 }
 
 
@@ -1222,12 +1228,12 @@ void Transition(void) {
   setW2(transition_w2);
   
   // Set variables for beginning transition
-  start_transition_loop_ms = millis();
-  last_transition_publish = 0;
+  start_transition_loop_ms = now;
+  last_transition_publish = now;
   transitioning = true;
 }
 
-void Transition_loop(unsigned long now) {
+void Transition_loop() {
   if (transitioning) {
     transition_ms = now - start_transition_loop_ms;
     
@@ -1244,6 +1250,7 @@ void Transition_loop(unsigned long now) {
       if(!UDP_stream) {
         setWhite();
         setColor();
+        last_publish_ms = now;
         publishCombinedJsonState();
         publishRGBJsonState();
         publishWhiteJsonState();
@@ -1256,6 +1263,7 @@ void Transition_loop(unsigned long now) {
     if (now - last_transition_publish > 15000) {
       last_transition_publish = now;
       if(!UDP_stream) {
+        last_publish_ms = now;
         publish_from_transition_state();
       }
     }
@@ -1398,7 +1406,7 @@ void  UDP_start_stop(void) {
   }
 }
 
-void  UDP_loop(unsigned long now) {
+void  UDP_loop() {
   if (UDP_stream == true) {
     // check if there is an UDP message available
     if(Udp.parsePacket()) {
