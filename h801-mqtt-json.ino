@@ -10,7 +10,7 @@
 // #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 800
 
 #define MQTT_MAX_PACKET_SIZE 800
-#define FIRMWARE_VERSION "2.0.4"
+#define FIRMWARE_VERSION "2.1.0"
 #define MANUFACTURER "Huacanxing"
 
 #include <string>
@@ -49,6 +49,7 @@ unsigned long last_mqtt_connected = 0;
 // transitioning variables
 float transition_time_s_standard = transition_time_s_conf;
 float transition_time_s = transition_time_s_conf;
+unsigned long now;
 unsigned long last_transition_publish = 0;
 unsigned long start_transition_loop_ms = 0;
 unsigned long transition_ms = 0;
@@ -67,6 +68,9 @@ uint8_t t_w1_begin = 255;
 uint8_t t_w2_begin = 255;
 boolean t_rgb_state_begin = false;
 boolean t_white_state_begin = false;
+boolean t_white_single_mode_begin = false;
+boolean t_white_single1_state_begin = false;
+boolean t_white_single2_state_begin = false;
 uint8_t targetR = 255;
 uint8_t targetG = 255;
 uint8_t targetB = 255;
@@ -110,6 +114,11 @@ uint8_t m_white_brightness = 255;
 uint16_t m_color_temp = max_color_temp;
 uint8_t m_w1 = 255;
 uint8_t m_w2 = 255;
+
+// store the state of the white single LED strips
+boolean m_white_single_mode = false;
+boolean m_white_single1_state = false;
+boolean m_white_single2_state = false;
 
 // store aditional states for combined RGB White light
 uint8_t m_combined_brightness = 255;
@@ -156,6 +165,8 @@ void setup()
   Serial1.println();
 
   // Setup WIFI
+  //WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  //WiFi.setOutputPower(20.5); // default is 20.5 which is max, 16.5 less interference, step size 0.25
   WiFi.mode(WIFI_STA);
   WiFi.begin(wifi_ssid_conf, wifi_password_conf);
 
@@ -240,14 +251,27 @@ void setW2(uint8_t brightness) {
 }
 
 void setWhite(void) {
-  if (m_white_state) {
-    uint8_t w1_brightness = map(m_w1, 0, 255, 0, m_white_brightness);
-    uint8_t w2_brightness = map(m_w2, 0, 255, 0, m_white_brightness);
-    setW1(w1_brightness);
-    setW2(w2_brightness);
+  if (!m_white_single_mode) {
+    if (m_white_state) {
+      uint8_t w1_brightness = map(m_w1, 0, 255, 0, m_white_brightness);
+      uint8_t w2_brightness = map(m_w2, 0, 255, 0, m_white_brightness);
+      setW1(w1_brightness);
+      setW2(w2_brightness);
+    } else {
+      setW1(0);
+      setW2(0);
+    }
   } else {
-    setW1(0);
-    setW2(0);
+    if (m_white_single1_state) {
+      setW1(m_w1);
+    } else {
+      setW1(0);
+    }
+    if (m_white_single2_state) {
+      setW2(m_w2);
+    } else {
+      setW2(0);
+    }
   }
 }
 
@@ -321,6 +345,42 @@ void publishWhiteJsonStateVal(boolean p_white_state, uint8_t p_w1, uint8_t p_w2,
   client.publish(MQTT_JSON_LIGHT_WHITE_STATE_TOPIC, buffer, true);
 }
 
+void publishWhiteSingle1JsonState() {
+  if (transitioning) {
+    return;  // let the transition publish intermediate states
+  }
+  publishWhiteSingle1JsonStateVal(m_white_single1_state, m_w1);
+}
+void publishWhiteSingle1JsonStateVal(boolean p_w1_state, uint8_t p_w1) {
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
+
+  root["state"] = (p_w1_state) ? LIGHT_ON : LIGHT_OFF;
+  root["brightness"] = p_w1;
+
+  char buffer[measureJson(root) + 1];
+  serializeJson(root, buffer, sizeof(buffer));
+
+  client.publish(MQTT_JSON_LIGHT_WHITE_SINGLE_1_STATE_TOPIC, buffer, true);
+}
+
+void publishWhiteSingle2JsonState() {
+  if (transitioning) {
+    return;  // let the transition publish intermediate states
+  }
+  publishWhiteSingle2JsonStateVal(m_white_single2_state, m_w2);
+}
+void publishWhiteSingle2JsonStateVal(boolean p_w2_state, uint8_t p_w2) {
+  StaticJsonDocument<JSON_BUFFER_SIZE> root;
+
+  root["state"] = (p_w2_state) ? LIGHT_ON : LIGHT_OFF;
+  root["brightness"] = p_w2;
+
+  char buffer[measureJson(root) + 1];
+  serializeJson(root, buffer, sizeof(buffer));
+
+  client.publish(MQTT_JSON_LIGHT_WHITE_SINGLE_2_STATE_TOPIC, buffer, true);
+}
+
 void publishCombinedJsonState() {
   if (transitioning) {
     return;  // let the transition publish intermediate states
@@ -382,6 +442,7 @@ void publishJsonSettings() {
   root["chip_id"] = myhostname;
   root["client_id"] = client_id;
   root["IP"] = ip.toString();
+  root["RSSI_dBm"] = WiFi.RSSI();
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
@@ -390,33 +451,24 @@ void publishJsonSettings() {
 }
 
 void publishJsonDiscovery() {
-  publishJsonDiscovery_entity("combined", "combined", true, true);
-  publishJsonDiscovery_entity("rgb", "rgb", false, true);
-  publishJsonDiscovery_entity("white", "white", true, false);
-  publishJsonDiscovery_entity("white_single", "white", false, false);
+  publishJsonDiscovery_entity("combined", true, true);
+  publishJsonDiscovery_entity("rgb", false, true);
+  publishJsonDiscovery_entity("white", true, false);
+  publishJsonDiscovery_entity("white_single", false, false);
+  publishJsonDiscovery_entity("white_single_2", false, false);
 }
 
-void publishJsonDiscovery_entity(const char type[], const char type_topic[], bool sup_color_temp, bool sup_rgb) {
+void publishJsonDiscovery_entity(const char type[], bool sup_color_temp, bool sup_rgb) {
   StaticJsonDocument<JSON_BUFFER_SIZE> root;
-  char idendifier[15] = "H801_";
-  strcat(idendifier, chip_id);
-  char unique_id[27] = "H801_";
-  strcat(unique_id, chip_id);
-  strcat(unique_id, "_");
-  strcat(unique_id, type);
-  char conf_url[strlen(OTA_update_path)+25] = "http://";
-  strcat(conf_url, ip.toString().c_str());
-  strcat(conf_url, OTA_update_path);
-  char entity_name[14] = "";
-  strcat(entity_name, type);
+  char idendifier[15], unique_id[29], entity_name[16], stat_t[29], cmd_t[29];
+  char conf_url[strlen(OTA_update_path)+25];
+  sprintf(idendifier, "H801_%s", chip_id);
+  sprintf(unique_id, "H801_%s_%s", chip_id, type);
+  sprintf(conf_url, "http://%s%s", ip.toString().c_str(), OTA_update_path);
+  sprintf(entity_name, "%s", type);
 
-  char stat_t[27] = "~/";
-  strcat(stat_t, type_topic);
-  strcat(stat_t, "/json_status");
-
-  char cmd_t[27] = "~/";
-  strcat(cmd_t, type);
-  strcat(cmd_t, "/json_set");
+  sprintf(stat_t, "~/%s/json_status", type);
+  sprintf(cmd_t, "~/%s/json_set", type);
 
   root["~"] = Mqtt_Base_Topic;
   root["name"] = entity_name;
@@ -463,12 +515,8 @@ void publishJsonDiscovery_entity(const char type[], const char type_topic[], boo
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
 
-  char mqtt_discovery_topic[strlen(MQTT_HOMEASSISTANT_DISCOVERY_PREFIX) + 45] = MQTT_HOMEASSISTANT_DISCOVERY_PREFIX;
-  strcat(mqtt_discovery_topic, "/light/H801_");
-  strcat(mqtt_discovery_topic, chip_id);
-  strcat(mqtt_discovery_topic, "/");
-  strcat(mqtt_discovery_topic, type);
-  strcat(mqtt_discovery_topic, "/config");
+  char mqtt_discovery_topic[strlen(MQTT_HOMEASSISTANT_DISCOVERY_PREFIX) + 50];
+  sprintf(mqtt_discovery_topic, "%s/light/H801_%s/%s/config", MQTT_HOMEASSISTANT_DISCOVERY_PREFIX, chip_id, type);
   client.publish(mqtt_discovery_topic, buffer, true);
 }
 
@@ -492,6 +540,9 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
   t_blue_begin = m_rgb_blue;
   // Save White begin state
   t_white_state_begin = m_white_state;
+  t_white_single_mode_begin = m_white_single_mode;
+  t_white_single1_state_begin = m_white_single1_state;
+  t_white_single2_state_begin = m_white_single2_state;
   t_white_brightness_begin = m_white_brightness;
   t_w1_begin = m_w1;
   t_w2_begin = m_w2;
@@ -505,52 +556,72 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     }
     if (transition_time_s <= 0) {
       setColor();
+      publishRGBJsonState();
     } else {
       Transition();
+      // Let transition publish each 15s and @end
     }
-    publishRGBJsonState();
   }
 
   // Handle White commands
   if (String(MQTT_JSON_LIGHT_WHITE_COMMAND_TOPIC).equals(p_topic)) {
-    if (!processWhiteJson(message)) {
+    m_white_single_mode = false;
+    if (!processWhiteJson(message, false, false)) {
       return;
     }
     if (transition_time_s <= 0) {
       setWhite();
+      publishWhiteJsonState();
     } else {
       Transition();
+      // Let transition publish each 15s and @end
     }
-    publishWhiteJsonState();
   }
 
-  // Handle White single commands
-  if (String(MQTT_JSON_LIGHT_WHITE_SINGLE_COMMAND_TOPIC).equals(p_topic)) {
-    if (!processWhiteJson(message)) {
+  // Handle White single 1 commands
+  if (String(MQTT_JSON_LIGHT_WHITE_SINGLE_1_COMMAND_TOPIC).equals(p_topic)) {
+    m_white_single_mode = true;
+    if (!processWhiteJson(message, true, false)) {
       return;
     }
-    m_color_temp = max_color_temp;
-    convert_color_temp();
     if (transition_time_s <= 0) {
       setWhite();
+      publishWhiteSingle1JsonState();
     } else {
       Transition();
+      // Let transition publish each 15s and @end
     }
-    publishWhiteJsonState();
+  }
+
+  // Handle White single 2 commands
+  if (String(MQTT_JSON_LIGHT_WHITE_SINGLE_2_COMMAND_TOPIC).equals(p_topic)) {
+    m_white_single_mode = true;
+    if (!processWhiteJson(message, false, true)) {
+      return;
+    }
+    if (transition_time_s <= 0) {
+      setWhite();
+      publishWhiteSingle2JsonState();
+    } else {
+      Transition();
+      // Let transition publish each 15s and @end
+    }
   }
 
   // Handle combined commands
   if (String(MQTT_JSON_LIGHT_COMBINED_COMMAND_TOPIC).equals(p_topic)) {
+    m_white_single_mode = false;
     if (!processCombinedJson(message)) {
       return;
     }
     if (transition_time_s <= 0) {
       setWhite();
       setColor();
+      publishCombinedJsonState();
     } else {
       Transition();
+      // Let transition publish each 15s and @end
     }
-    publishCombinedJsonState();
   }
 
   // Handle settings commands
@@ -670,7 +741,7 @@ bool processRGBJson(char* message) {
 }
 
 
-bool processWhiteJson(char* message) {
+bool processWhiteJson(char* message, bool single1, bool single2) {
   StaticJsonDocument<JSON_BUFFER_SIZE> root;
 
   DeserializationError error = deserializeJson(root, message);
@@ -688,9 +759,34 @@ bool processWhiteJson(char* message) {
       if (m_white_brightness == 0) {
         m_white_brightness = 255;
       }
+      // process single mode
+      if (m_white_single_mode && single1){
+        m_white_single1_state = true;
+        if (m_w1 == 0) { //check brightness not to be 0
+          m_w1 = 255;
+        }
+      }
+      if (m_white_single_mode && single2){
+        m_white_single2_state = true;
+        if (m_w2 == 0) { //check brightness not to be 0
+          m_w2 = 255;
+        }
+      }
     }
     else if (strcmp(root["state"], LIGHT_OFF) == 0) {
-      m_white_state = false;
+      if (!m_white_single_mode){
+        m_white_state = false;
+        m_white_single1_state = false;
+        m_white_single2_state = false;
+      } else {
+        if (single1){
+          m_white_single1_state = false;
+        }
+        if (single2){
+          m_white_single2_state = false;
+        }
+        m_white_state = m_white_single1_state || m_white_single2_state;
+      }
     }
   }
 
@@ -702,6 +798,12 @@ bool processWhiteJson(char* message) {
       return false;
     } else {
       m_white_brightness = brightness;
+      if (single1){
+        m_w1 = brightness;
+      }
+      if (single2){
+        m_w2 = brightness;
+      }
     }
   }
 
@@ -950,12 +1052,15 @@ void reconnect() {
       publishCombinedJsonState();
       publishRGBJsonState();
       publishWhiteJsonState();
+      publishWhiteSingle1JsonState();
+      publishWhiteSingle2JsonState();
       publishJsonSettings();
       publishJsonDiscovery();
       // ... and resubscribe
       client.subscribe(MQTT_JSON_LIGHT_RGB_COMMAND_TOPIC);
       client.subscribe(MQTT_JSON_LIGHT_WHITE_COMMAND_TOPIC);
-      client.subscribe(MQTT_JSON_LIGHT_WHITE_SINGLE_COMMAND_TOPIC);
+      client.subscribe(MQTT_JSON_LIGHT_WHITE_SINGLE_1_COMMAND_TOPIC);
+      client.subscribe(MQTT_JSON_LIGHT_WHITE_SINGLE_2_COMMAND_TOPIC);
       client.subscribe(MQTT_JSON_LIGHT_COMBINED_COMMAND_TOPIC);
       client.subscribe(MQTT_JSON_LIGHT_SETTINGS_COMMAND_TOPIC);
     } else {
@@ -985,7 +1090,7 @@ void reconnect() {
 
 void loop()
 {  
-  unsigned long now = millis();
+  now = millis();
   if (WiFi.status() == WL_CONNECTED) {
     //Confirm that still connected to MQTT broker
     if (!client.connected()) {
@@ -1018,12 +1123,14 @@ void loop()
     publishCombinedJsonState();
     publishRGBJsonState();
     publishWhiteJsonState();
+    publishWhiteSingle1JsonState();
+    publishWhiteSingle2JsonState();
     client.publish(MQTT_UP, MQTT_UP_online, true);
   }
   // Process UDP messages if needed
-  UDP_loop(now);
+  UDP_loop();
   // Process transitions if needed
-  Transition_loop(now);
+  Transition_loop();
 }
 
 
@@ -1121,12 +1228,12 @@ void Transition(void) {
   setW2(transition_w2);
   
   // Set variables for beginning transition
-  start_transition_loop_ms = millis();
-  last_transition_publish = 0;
+  start_transition_loop_ms = now;
+  last_transition_publish = now;
   transitioning = true;
 }
 
-void Transition_loop(unsigned long now) {
+void Transition_loop() {
   if (transitioning) {
     transition_ms = now - start_transition_loop_ms;
     
@@ -1143,9 +1250,12 @@ void Transition_loop(unsigned long now) {
       if(!UDP_stream) {
         setWhite();
         setColor();
+        last_publish_ms = now;
         publishCombinedJsonState();
         publishRGBJsonState();
         publishWhiteJsonState();
+        publishWhiteSingle1JsonState();
+        publishWhiteSingle2JsonState();
       }
     }
 
@@ -1153,6 +1263,7 @@ void Transition_loop(unsigned long now) {
     if (now - last_transition_publish > 15000) {
       last_transition_publish = now;
       if(!UDP_stream) {
+        last_publish_ms = now;
         publish_from_transition_state();
       }
     }
@@ -1171,12 +1282,25 @@ void  get_target_from_m_state(void) {
     targetB = 0;
   }
   // get White state for the transition from the normal state variables
-  if (m_white_state) {
-    targetW1 = map(m_w1, 0, 255, 0, m_white_brightness);
-    targetW2 = map(m_w2, 0, 255, 0, m_white_brightness);
+  if (!m_white_single_mode) {
+    if (m_white_state) {
+      targetW1 = map(m_w1, 0, 255, 0, m_white_brightness);
+      targetW2 = map(m_w2, 0, 255, 0, m_white_brightness);
+    } else {
+      targetW1 = 0;
+      targetW2 = 0;
+    }
   } else {
-    targetW1 = 0;
-    targetW2 = 0;
+    if (m_white_single1_state) {
+      targetW1 = m_w1;
+    } else {
+      targetW1 = 0;
+    }
+    if (m_white_single2_state) {
+      targetW2 = m_w2;
+    } else {
+      targetW2 = 0;
+    }
   }
 }
 
@@ -1192,18 +1316,31 @@ void  get_transition_state_from_begin(void) {
     transition_blue = 0;
   }
   // get White state for the transition from the normal state variables
-  if (t_white_state_begin) {
-    transition_w1 = map(t_w1_begin, 0, 255, 0, t_white_brightness_begin);
-    transition_w2 = map(t_w2_begin, 0, 255, 0, t_white_brightness_begin);
+  if (!t_white_single_mode_begin){
+    if (t_white_state_begin) {
+      transition_w1 = map(t_w1_begin, 0, 255, 0, t_white_brightness_begin);
+      transition_w2 = map(t_w2_begin, 0, 255, 0, t_white_brightness_begin);
+    } else {
+      transition_w1 = 0;
+      transition_w2 = 0;
+    }
   } else {
-    transition_w1 = 0;
-    transition_w2 = 0;
+    if (t_white_single1_state_begin) {
+      transition_w1 = t_w1_begin;
+    } else {
+      transition_w1 = 0;
+    }
+    if (t_white_single2_state_begin) {
+      transition_w2 = t_w2_begin;
+    } else {
+      transition_w2 = 0;
+    }
   }
 }
 
 void  publish_from_transition_state(void) {
-  boolean p_white_state, p_rgb_state;
-  uint8_t p_w1, p_w2, p_rgb_red, p_rgb_green, p_rgb_blue, p_white_brightness, p_rgb_brightness, p_combined_brightness;
+  boolean p_white_state, p_rgb_state, p_s1_state, p_s2_state;
+  uint8_t p_w1, p_w2, p_s1, p_s2, p_rgb_red, p_rgb_green, p_rgb_blue, p_white_brightness, p_rgb_brightness, p_combined_brightness;
   
   // get RGB variables from transition variabels
   if (transition_red == 0 && transition_green == 0 && transition_blue == 0) {
@@ -1233,11 +1370,28 @@ void  publish_from_transition_state(void) {
     p_w2 = map(transition_w2, 0, p_white_brightness, 0, 255);
   }
 
+  if (transition_w1 == 0) {
+    p_s1_state = false;
+    p_s1 = t_w1_begin;
+  } else {
+    p_s1_state = true;
+    p_s1 = transition_w1;
+  }
+  if (transition_w2 == 0) {
+    p_s2_state = false;
+    p_s2 = t_w2_begin;
+  } else {
+    p_s2_state = true;
+    p_s2 = transition_w2;
+  }
+
   p_combined_brightness = std::max(p_white_brightness, p_rgb_brightness);
 
   publishCombinedJsonStateVal(p_white_state, p_w1, p_w2, p_rgb_state, p_rgb_red, p_rgb_green, p_rgb_blue, p_combined_brightness);
   publishRGBJsonStateVal(p_rgb_state, p_rgb_red, p_rgb_green, p_rgb_blue, p_rgb_brightness);
   publishWhiteJsonStateVal(p_white_state, p_w1, p_w2, p_white_brightness);
+  publishWhiteSingle1JsonStateVal(p_s1_state, p_s1);
+  publishWhiteSingle2JsonStateVal(p_s2_state, p_s2);
 }
 
 /********************************** UDP/HDMI code *****************************************/
@@ -1252,7 +1406,7 @@ void  UDP_start_stop(void) {
   }
 }
 
-void  UDP_loop(unsigned long now) {
+void  UDP_loop() {
   if (UDP_stream == true) {
     // check if there is an UDP message available
     if(Udp.parsePacket()) {
@@ -1281,6 +1435,8 @@ void  UDP_loop(unsigned long now) {
       publishCombinedJsonState();
       publishRGBJsonState();
       publishWhiteJsonState();
+      publishWhiteSingle1JsonState();
+      publishWhiteSingle2JsonState();
     }
   }
 }
