@@ -453,7 +453,7 @@ void publishJsonDiscovery() {
   publishJsonDiscovery_entity("combined", true, true);
   publishJsonDiscovery_entity("rgb", false, true);
   publishJsonDiscovery_entity("white", true, false);
-  publishJsonDiscovery_entity("white_single_1", false, false);
+  publishJsonDiscovery_entity("white_single", false, false);
   publishJsonDiscovery_entity("white_single_2", false, false);
 }
 

@@ -20,8 +20,8 @@
 #define MQTT_JSON_LIGHT_WHITE_STATE_TOPIC Mqtt_Base_Topic "/white/json_status"
 #define MQTT_JSON_LIGHT_WHITE_COMMAND_TOPIC Mqtt_Base_Topic "/white/json_set"
 
-#define MQTT_JSON_LIGHT_WHITE_SINGLE_1_STATE_TOPIC Mqtt_Base_Topic "/white_single_1/json_status"
-#define MQTT_JSON_LIGHT_WHITE_SINGLE_1_COMMAND_TOPIC Mqtt_Base_Topic "/white_single_1/json_set"
+#define MQTT_JSON_LIGHT_WHITE_SINGLE_1_STATE_TOPIC Mqtt_Base_Topic "/white_single/json_status"
+#define MQTT_JSON_LIGHT_WHITE_SINGLE_1_COMMAND_TOPIC Mqtt_Base_Topic "/white_single/json_set"
 
 #define MQTT_JSON_LIGHT_WHITE_SINGLE_2_STATE_TOPIC Mqtt_Base_Topic "/white_single_2/json_status"
 #define MQTT_JSON_LIGHT_WHITE_SINGLE_2_COMMAND_TOPIC Mqtt_Base_Topic "/white_single_2/json_set"
