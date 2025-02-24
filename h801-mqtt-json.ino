@@ -46,6 +46,7 @@ IPAddress ip;
 uint8_t reconnect_N = 0;
 unsigned long last_publish_ms = 0;
 unsigned long last_mqtt_connected = 0;
+bool mqtt_proccesed = false;
 // transitioning variables
 float transition_time_s_standard = transition_time_s_conf;
 float transition_time_s = transition_time_s_conf;
@@ -100,6 +101,10 @@ const char* LIGHT_OFF = "OFF";
 
 #define GREEN_PIN    1
 #define RED_PIN      5
+
+// GREEN PIN state
+bool GREEN_state = false;
+unsigned long GREEN_off_ms = 0;
 
 // store the state of the rgb LED strip (colors, brightness, ...)
 boolean m_rgb_state = false;
@@ -285,6 +290,13 @@ void setLEDpin(int LED_pin, uint8_t LED_value){
     LED_value = map(LED_value, 0, 255, 0, RGB_mixing[2]); 
   }
   analogWrite(LED_pin, LED_value);
+}
+
+void Flash_GREEN(void) {
+  // Flash green LED for 0.2 seconds
+  digitalWrite(GREEN_PIN, 0);
+  GREEN_state = true;
+  GREEN_off_ms = now;
 }
 
 /********************************** Publish states *****************************************/
@@ -560,6 +572,7 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     } else {
       Transition();
       // Let transition publish each 15s and @end
+      mqtt_proccesed = true;
     }
   }
 
@@ -575,6 +588,7 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     } else {
       Transition();
       // Let transition publish each 15s and @end
+      mqtt_proccesed = true;
     }
   }
 
@@ -590,6 +604,7 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     } else {
       Transition();
       // Let transition publish each 15s and @end
+      mqtt_proccesed = true;
     }
   }
 
@@ -605,6 +620,7 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
     } else {
       Transition();
       // Let transition publish each 15s and @end
+      mqtt_proccesed = true;
     }
   }
 
@@ -639,9 +655,7 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
   UDP_start_stop();
 
   // Flash green LED
-  digitalWrite(GREEN_PIN, 0);
-  delay(1);
-  digitalWrite(GREEN_PIN, 1);
+  Flash_GREEN();
 }
 
 
@@ -1110,6 +1124,15 @@ void loop()
   }
 
   client.loop();
+  if (mqtt_proccesed) {
+    // potentially process up to 3 commands before starting transition simultaniously
+    mqtt_proccesed = false;
+    client.loop();
+    if (mqtt_proccesed) {
+      client.loop();
+    }
+    mqtt_proccesed = false;
+  }
   
   // process OTA updates
   httpServer.handleClient();
@@ -1131,8 +1154,15 @@ void loop()
   UDP_loop();
   // Process transitions if needed
   Transition_loop();
+  // Process Green/Red LED if needed
+  Indicator_LED_loop();
 }
 
+void Indicator_LED_loop(void) {
+  if (GREEN_state && now - GREEN_off_ms > 200) {
+    digitalWrite(GREEN_PIN, 1);
+  }
+}
 
 /********************************** Fading code *****************************************/
 
@@ -1233,7 +1263,7 @@ void Transition(void) {
   transitioning = true;
 }
 
-void Transition_loop() {
+void Transition_loop(void) {
   if (transitioning) {
     transition_ms = now - start_transition_loop_ms;
     
