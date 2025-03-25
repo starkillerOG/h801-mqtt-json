@@ -10,7 +10,7 @@
 // #define MQTT_MAX_PACKET_SIZE 128 --> #define MQTT_MAX_PACKET_SIZE 800
 
 #define MQTT_MAX_PACKET_SIZE 800
-#define FIRMWARE_VERSION "2.1.0"
+#define FIRMWARE_VERSION "2.1.1"
 #define MANUFACTURER "Huacanxing"
 
 #include <string>
@@ -368,6 +368,7 @@ void publishWhiteSingle1JsonStateVal(boolean p_w1_state, uint8_t p_w1) {
 
   root["state"] = (p_w1_state) ? LIGHT_ON : LIGHT_OFF;
   root["brightness"] = p_w1;
+  root["color_mode"] = "brightness";
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
@@ -386,6 +387,7 @@ void publishWhiteSingle2JsonStateVal(boolean p_w2_state, uint8_t p_w2) {
 
   root["state"] = (p_w2_state) ? LIGHT_ON : LIGHT_OFF;
   root["brightness"] = p_w2;
+  root["color_mode"] = "brightness";
 
   char buffer[measureJson(root) + 1];
   serializeJson(root, buffer, sizeof(buffer));
@@ -491,9 +493,7 @@ void publishJsonDiscovery_entity(const char type[], bool sup_color_temp, bool su
   root["avty_t"] = "~/active";
   root["brightness"] = true;
   JsonArray sup_col_modes;
-  if(sup_color_temp | sup_rgb) {
-    sup_col_modes = root.createNestedArray("supported_color_modes");
-  }
+  sup_col_modes = root.createNestedArray("supported_color_modes");
   if(sup_color_temp) {
     sup_col_modes.add("color_temp");
     root["min_mireds"] = min_color_temp;
@@ -513,6 +513,9 @@ void publishJsonDiscovery_entity(const char type[], bool sup_color_temp, bool su
     if (UDP_Port != 0) {
       effect_list.add("HDMI");
     }
+  }
+  if(!sup_color_temp && !sup_rgb) {
+    sup_col_modes.add("brightness");
   }
   root["optimistic"] = false;
   JsonObject device = root.createNestedObject("device");
