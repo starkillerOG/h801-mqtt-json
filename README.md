@@ -5,6 +5,7 @@ The is an alternative firmware for the H801 LED dimmer that uses MQTT JSON as a 
 It is meant to control the 5 channels of the H801 to simultaneously control an RGB and a Warm-white/Cold-white Led strip such as an 5050 RGB LED strip and a 5025 Dual White strip.
 
 [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/starkillerOG)
+<a href="https://www.buymeacoffee.com/starkillerog"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me a Coffee" height="21"></a>
 
 This firmware is based on:
 1. https://github.com/open-homeautomation/h801/blob/master/mqtt/mqtt.ino
@@ -13,7 +14,6 @@ This firmware is based on:
 1. https://github.com/ambilight-4-mediaportal/AtmoOrb/tree/master/ESP8266/ESP8266_H801
 
 ![alt text](https://raw.githubusercontent.com/starkillerOG/h801-mqtt-json/master/pictures/H801-WiFi-LED-Controller.jpg)
-<a href="https://www.buymeacoffee.com/starkillerog"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me a Coffee" height="21"></a>
 
 ## Ways to control
 This firmware offers 4 possible ways of controlling the LED strips connected to the H801:
