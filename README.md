@@ -13,6 +13,7 @@ This firmware is based on:
 1. https://github.com/ambilight-4-mediaportal/AtmoOrb/tree/master/ESP8266/ESP8266_H801
 
 ![alt text](https://raw.githubusercontent.com/starkillerOG/h801-mqtt-json/master/pictures/H801-WiFi-LED-Controller.jpg)
+<a href="https://www.buymeacoffee.com/starkillerog"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me a Coffee" height="21"></a>
 
 ## Ways to control
 This firmware offers 4 possible ways of controlling the LED strips connected to the H801:
