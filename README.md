@@ -6,6 +6,7 @@ It is meant to control the 5 channels of the H801 to simultaneously control an R
 
 [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/starkillerOG)
 <a href="https://www.buymeacoffee.com/starkillerog"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me a Coffee" height="21"></a>
+<a href='https://ko-fi.com/A3O220R062' target='_blank'><img style='border:0px;height:21px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
 This firmware is based on:
 1. https://github.com/open-homeautomation/h801/blob/master/mqtt/mqtt.ino
